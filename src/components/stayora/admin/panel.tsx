@@ -7,6 +7,7 @@ import {
   createListing,
 } from '@/lib/api'
 import { formatPrice, formatDate, formatRelativeDate, formatNumber, formatRating } from '@/lib/format'
+import { ContentTab } from '@/components/stayora/admin/content-tab'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,7 +26,7 @@ import {
   LayoutDashboard, Users, Home, CalendarDays, DollarSign, LifeBuoy, ShieldAlert, Activity,
   TrendingUp, TrendingDown, AlertCircle, CheckCircle2, XCircle, Eye, MoreVertical, Filter, Search,
   Crown, UserCheck, UserX, Trash2, ShieldCheck, FileText, ArrowUpRight, ArrowDownRight, Banknote,
-  AlertTriangle, Clock, Zap,
+  AlertTriangle, Clock, Zap, Settings2,
 } from 'lucide-react'
 
 // ============================================================
@@ -50,6 +51,7 @@ const NAV: { id: AdminTab; label: string; icon: any }[] = [
   { id: 'bookings', label: 'Bookings', icon: CalendarDays },
   { id: 'finance', label: 'Finance', icon: DollarSign },
   { id: 'support', label: 'Support', icon: LifeBuoy },
+  { id: 'content', label: 'Content', icon: Settings2 },
   { id: 'audit', label: 'Audit', icon: ShieldAlert },
 ]
 
@@ -185,6 +187,9 @@ export function AdminPanel() {
         )}
         {adminTab === 'support' && (
           <SupportTab tickets={data?.supportTickets || []} loading={loading} />
+        )}
+        {adminTab === 'content' && (
+          <ContentTab />
         )}
         {adminTab === 'audit' && (
           <AuditTab logs={data?.auditLogs || []} loading={loading} />

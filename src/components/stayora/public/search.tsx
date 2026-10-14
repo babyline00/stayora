@@ -3,6 +3,8 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { searchListings, fetchDestinations, fetchMapMarkers } from '@/lib/api'
+import { useAmenities, useCategories } from '@/hooks/use-content'
+import { resolveIcon } from '@/lib/icon-resolver'
 import { PropertyCard } from '@/components/stayora/shared/property-card'
 import { OpenStreetMap } from '@/components/stayora/shared/open-street-map'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,11 +14,8 @@ import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Star, SlidersHorizontal, X, MapPin, Compass, Map as MapIcon, LayoutGrid } from 'lucide-react'
-import { AMENITY_LABELS, CATEGORY_LABELS, formatNumber, formatPrice } from '@/lib/format'
-
-const ALL_AMENITIES = Object.keys(AMENITY_LABELS)
-const ALL_CATEGORIES = Object.keys(CATEGORY_LABELS)
+import { Star, SlidersHorizontal, X, MapPin, Compass, Map as MapIcon, LayoutGrid, Loader2 } from 'lucide-react'
+import { formatNumber, formatPrice } from '@/lib/format'
 
 export function SearchView() {
   const { filters, setFilters, resetFilters, selectListing } = useAppStore()
@@ -26,6 +25,23 @@ export function SearchView() {
   const [showFilters, setShowFilters] = useState(true)
   const [showMap, setShowMap] = useState(false)
   const [destinations, setDestinations] = useState<any[]>([])
+
+  // DB-driven content
+  const { amenities: allAmenities, loading: amenitiesLoading } = useAmenities()
+  const { categories: allCategories, loading: categoriesLoading } = useCategories()
+
+  // amenity label lookup (key -> label)
+  const amenityLabels = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const a of allAmenities) map[(a as any).key] = (a as any).label
+    return map
+  }, [allAmenities])
+
+  const categoryLabels = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const c of allCategories) map[(c as any).key] = (c as any).label
+    return map
+  }, [allCategories])
 
   // Convert filters to query params
   const queryParams = useMemo(() => ({
@@ -208,19 +224,25 @@ export function SearchView() {
               </FilterBlock>
 
               <FilterBlock title="Property type">
-                <div className="grid grid-cols-2 gap-2">
-                  {ALL_CATEGORIES.map(c => (
-                    <button
-                      key={c}
-                      onClick={() => setFilters({ category: filters.category === c ? undefined : c })}
-                      className={`rounded-lg border px-3 py-2 text-xs font-medium ${
-                        filters.category === c ? 'border-orange bg-peach-light text-navy' : 'border-border text-navy/80 hover:bg-peach-light/50'
-                      }`}
-                    >
-                      {CATEGORY_LABELS[c]}
-                    </button>
-                  ))}
-                </div>
+                {categoriesLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {allCategories.map((c: any) => (
+                      <button
+                        key={c.id}
+                        onClick={() => setFilters({ category: filters.category === c.key ? undefined : c.key })}
+                        className={`rounded-lg border px-3 py-2 text-xs font-medium ${
+                          filters.category === c.key ? 'border-orange bg-peach-light text-navy' : 'border-border text-navy/80 hover:bg-peach-light/50'
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </FilterBlock>
 
               <FilterBlock title="Bedrooms & bathrooms">
@@ -251,17 +273,23 @@ export function SearchView() {
               </FilterBlock>
 
               <FilterBlock title="Amenities">
-                <div className="grid grid-cols-2 gap-2">
-                  {ALL_AMENITIES.map(a => (
-                    <label key={a} className="flex items-center gap-2 text-xs">
-                      <Checkbox
-                        checked={filters.amenities.includes(a)}
-                        onCheckedChange={() => toggleAmenity(a)}
-                      />
-                      {AMENITY_LABELS[a]}
-                    </label>
-                  ))}
-                </div>
+                {amenitiesLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {allAmenities.map((a: any) => (
+                      <label key={a.id} className="flex items-center gap-2 text-xs">
+                        <Checkbox
+                          checked={filters.amenities.includes(a.key)}
+                          onCheckedChange={() => toggleAmenity(a.key)}
+                        />
+                        {a.label}
+                      </label>
+                    ))}
+                  </div>
+                )}
               </FilterBlock>
 
               <FilterBlock title="More">
@@ -287,10 +315,10 @@ export function SearchView() {
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Active filters</p>
                   <div className="flex flex-wrap gap-1">
                     {filters.category && (
-                      <Badge variant="secondary" className="gap-1">{CATEGORY_LABELS[filters.category]} <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters({ category: undefined })} /></Badge>
+                      <Badge variant="secondary" className="gap-1">{categoryLabels[filters.category] || filters.category} <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters({ category: undefined })} /></Badge>
                     )}
                     {filters.amenities.map(a => (
-                      <Badge key={a} variant="secondary" className="gap-1">{AMENITY_LABELS[a]} <X className="h-3 w-3 cursor-pointer" onClick={() => toggleAmenity(a)} /></Badge>
+                      <Badge key={a} variant="secondary" className="gap-1">{amenityLabels[a] || a} <X className="h-3 w-3 cursor-pointer" onClick={() => toggleAmenity(a)} /></Badge>
                     ))}
                     {filters.instantBookOnly && (
                       <Badge variant="secondary" className="gap-1">Instant Book <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters({ instantBookOnly: false })} /></Badge>

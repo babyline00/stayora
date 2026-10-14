@@ -18,7 +18,7 @@ export type ViewName =
 
 export type GuestTab = 'overview' | 'trips' | 'wishlists' | 'messages' | 'reviews' | 'payments' | 'notifications' | 'profile' | 'support'
 export type HostTab = 'overview' | 'listings' | 'calendar' | 'reservations' | 'inbox' | 'earnings' | 'analytics' | 'reviews' | 'cohosts' | 'create'
-export type AdminTab = 'dashboard' | 'users' | 'listings' | 'bookings' | 'finance' | 'support' | 'audit'
+export type AdminTab = 'dashboard' | 'users' | 'listings' | 'bookings' | 'finance' | 'support' | 'audit' | 'content'
 
 export interface AppUser {
   id: string

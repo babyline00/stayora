@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { createListing } from '@/lib/api'
+import { useAmenities, useWizardSteps, useDestinations, useCategories } from '@/hooks/use-content'
+import { resolveIcon } from '@/lib/icon-resolver'
 import { ImageUploader, UploadedImage } from '@/components/stayora/shared/image-uploader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,31 +14,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Card, CardContent } from '@/components/ui/card'
 import { Slider } from '@/components/ui/slider'
-import { ArrowLeft, ArrowRight, Check, Home, MapPin, Users, Sparkles, ImageIcon, FileText, Shield, Calendar, DollarSign, Rocket, X, AlertCircle, Save, Trash2, Search } from 'lucide-react'
-import { CATEGORY_LABELS, CANCELLATION_LABELS } from '@/lib/format'
-
-const STEPS = [
-  { id: 'type', label: 'Property type', icon: Home },
-  { id: 'location', label: 'Location', icon: MapPin },
-  { id: 'capacity', label: 'Capacity', icon: Users },
-  { id: 'amenities', label: 'Amenities', icon: Sparkles },
-  { id: 'photos', label: 'Photos', icon: ImageIcon },
-  { id: 'description', label: 'Description', icon: FileText },
-  { id: 'rules', label: 'House rules', icon: Shield },
-  { id: 'availability', label: 'Availability', icon: Calendar },
-  { id: 'pricing', label: 'Pricing', icon: DollarSign },
-  { id: 'review', label: 'Review', icon: Rocket },
-]
-
-const ALL_AMENITIES = ['wifi', 'kitchen', 'pool', 'parking', 'ac', 'workspace', 'washer', 'dryer', 'tv', 'heating', 'hot_tub', 'gym', 'fireplace', 'bbq', 'balcony', 'garden', 'beach_access', 'ski_storage', 'ev_charger', 'security', 'first_aid', 'smoke_alarm']
-
-const AMENITY_LABELS: Record<string, string> = {
-  wifi: 'Wi-Fi', kitchen: 'Kitchen', pool: 'Pool', parking: 'Free parking', ac: 'Air conditioning',
-  workspace: 'Dedicated workspace', washer: 'Washer', dryer: 'Dryer', tv: 'TV', heating: 'Heating',
-  hot_tub: 'Hot tub', gym: 'Gym', fireplace: 'Fireplace', bbq: 'BBQ grill', balcony: 'Balcony',
-  garden: 'Garden', beach_access: 'Beach access', ski_storage: 'Ski storage', ev_charger: 'EV charger',
-  security: 'Security system', first_aid: 'First aid kit', smoke_alarm: 'Smoke alarm',
-}
+import { ArrowLeft, ArrowRight, Check, AlertCircle, Save, Trash2, Search, Loader2, MapPin, Calendar, Star } from 'lucide-react'
+import { CANCELLATION_LABELS } from '@/lib/format'
 
 interface FormData {
   category: string
@@ -116,20 +95,6 @@ const DEFAULTS: FormData = {
 
 const STORAGE_KEY = 'stayora-listing-wizard-draft'
 
-// Popular destinations with coords for autocomplete
-const POPULAR_DESTINATIONS = [
-  { city: 'Lisbon', country: 'Portugal', lat: 38.7223, lng: -9.1393 },
-  { city: 'Kyoto', country: 'Japan', lat: 35.0116, lng: 135.7681 },
-  { city: 'Marrakech', country: 'Morocco', lat: 31.6295, lng: -7.9811 },
-  { city: 'Cape Town', country: 'South Africa', lat: -33.9249, lng: 18.4241 },
-  { city: 'Bali', country: 'Indonesia', lat: -8.3405, lng: 115.0920 },
-  { city: 'Barcelona', country: 'Spain', lat: 41.3851, lng: 2.1734 },
-  { city: 'Mexico City', country: 'Mexico', lat: 19.4326, lng: -99.1332 },
-  { city: 'Reykjavik', country: 'Iceland', lat: 64.1466, lng: -21.9426 },
-  { city: 'Buenos Aires', country: 'Argentina', lat: -34.6037, lng: -58.3816 },
-  { city: 'Queenstown', country: 'New Zealand', lat: -45.0312, lng: 168.6626 },
-]
-
 export function CreateListingWizard() {
   const { user, setView, showToast } = useAppStore()
   const [step, setStep] = useState(0)
@@ -138,6 +103,12 @@ export function CreateListingWizard() {
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null)
   const [showLocationHelp, setShowLocationHelp] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+
+  // Fetch content from DB
+  const { amenities: allAmenities, loading: amenitiesLoading } = useAmenities()
+  const { steps: wizardSteps, loading: stepsLoading } = useWizardSteps()
+  const { destinations: popularDestinations } = useDestinations()
+  const { categories: propertyCategories } = useCategories()
 
   // Load draft from localStorage on mount
   useEffect(() => {
@@ -179,6 +150,17 @@ export function CreateListingWizard() {
     )
   }
 
+  // Guard: wait for wizard steps to load before rendering the body
+  if (wizardSteps.length === 0) {
+    return (
+      <div className="mx-auto max-w-5xl px-6 py-6">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading wizard steps…
+        </div>
+      </div>
+    )
+  }
+
   const update = (patch: Partial<FormData>) => {
     setData(d => ({ ...d, ...patch }))
     setValidationErrors({})
@@ -186,7 +168,7 @@ export function CreateListingWizard() {
   const toggleAmenity = (a: string) =>
     update({ amenities: data.amenities.includes(a) ? data.amenities.filter(x => x !== a) : [...data.amenities, a] })
 
-  const next = () => setStep(s => Math.min(STEPS.length - 1, s + 1))
+  const next = () => setStep(s => Math.min(wizardSteps.length - 1, s + 1))
   const prev = () => setStep(s => Math.max(0, s - 1))
 
   const clearDraft = () => {
@@ -268,9 +250,9 @@ export function CreateListingWizard() {
     }
   }
 
-  // Set coords based on city/country lookup
+  // Set coords based on city/country lookup (uses DB-driven popular destinations)
   const lookupCoords = () => {
-    const match = POPULAR_DESTINATIONS.find(d =>
+    const match = popularDestinations.find((d: any) =>
       d.city.toLowerCase() === data.city.trim().toLowerCase() &&
       d.country.toLowerCase() === data.country.trim().toLowerCase()
     )
@@ -303,30 +285,36 @@ export function CreateListingWizard() {
         <p className="text-sm text-muted-foreground">Your progress saves automatically as a draft. Resume anytime.</p>
       </div>
 
-      {/* Stepper */}
+      {/* Stepper — driven by DB-fetched wizard steps */}
       <div className="mb-8 overflow-x-auto">
-        <ol className="flex items-center gap-2 min-w-max">
-          {STEPS.map((s, i) => {
-            const Icon = s.icon
-            const done = i < step
-            const active = i === step
-            return (
-              <li key={s.id} className="flex items-center">
-                <button
-                  onClick={() => setStep(i)}
-                  className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                    active ? 'bg-navy text-white' :
-                    done ? 'bg-peach-light text-navy' : 'text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {done ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
-                  <span>{i + 1}. {s.label}</span>
-                </button>
-                {i < STEPS.length - 1 && <span className="mx-1 text-muted-foreground">→</span>}
-              </li>
-            )
-          })}
-        </ol>
+        {stepsLoading ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> Loading steps…
+          </div>
+        ) : (
+          <ol className="flex items-center gap-2 min-w-max">
+            {wizardSteps.map((s: any, i: number) => {
+              const Icon = resolveIcon(s.icon) as any
+              const done = i < step
+              const active = i === step
+              return (
+                <li key={s.id} className="flex items-center">
+                  <button
+                    onClick={() => setStep(i)}
+                    className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                      active ? 'bg-navy text-white' :
+                      done ? 'bg-peach-light text-navy' : 'text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {done ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
+                    <span>{i + 1}. {s.label}</span>
+                  </button>
+                  {i < wizardSteps.length - 1 && <span className="mx-1 text-muted-foreground">→</span>}
+                </li>
+              )
+            })}
+          </ol>
+        )}
       </div>
 
       {/* Step content */}
@@ -338,17 +326,24 @@ export function CreateListingWizard() {
               <div>
                 <Label className="mb-2 block">Property type</Label>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
-                    <button
-                      key={k}
-                      onClick={() => update({ category: k })}
-                      className={`rounded-lg border p-3 text-left text-sm font-medium transition ${
-                        data.category === k ? 'border-orange bg-peach-light text-navy' : 'border-border hover:bg-peach-light/50'
-                      }`}
-                    >
-                      {v}
-                    </button>
-                  ))}
+                  {propertyCategories.map((c: any) => {
+                    const Icon = resolveIcon(c.icon) as any
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => update({ category: c.key })}
+                        className={`flex items-center gap-2 rounded-lg border p-3 text-left text-sm font-medium transition ${
+                          data.category === c.key ? 'border-orange bg-peach-light text-navy' : 'border-border hover:bg-peach-light/50'
+                        }`}
+                      >
+                        <Icon className="h-4 w-4 text-navy/70" />
+                        {c.label}
+                      </button>
+                    )
+                  })}
+                  {propertyCategories.length === 0 && (
+                    <p className="text-xs text-muted-foreground">No property categories configured. Add some from the admin panel.</p>
+                  )}
                 </div>
               </div>
               <div>
@@ -441,15 +436,28 @@ export function CreateListingWizard() {
           {step === 3 && (
             <div className="space-y-4">
               <h2 className="text-lg font-bold text-navy">What amenities do you offer?</h2>
-              <p className="text-sm text-muted-foreground">Tap amenities that apply. These appear as filterable tags on your listing.</p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {ALL_AMENITIES.map(a => (
-                  <label key={a} className="flex items-center gap-2 rounded-lg border border-border p-2 cursor-pointer has-[:checked]:border-orange has-[:checked]:bg-peach-light">
-                    <Checkbox checked={data.amenities.includes(a)} onCheckedChange={() => toggleAmenity(a)} />
-                    <span className="text-sm">{AMENITY_LABELS[a]}</span>
-                  </label>
-                ))}
-              </div>
+              <p className="text-sm text-muted-foreground">Tap amenities that apply. These appear as filterable tags on your listing. Managed by admins — add or remove from the admin panel.</p>
+              {amenitiesLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading amenities…
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {allAmenities.map((a: any) => {
+                    const Icon = resolveIcon(a.icon) as any
+                    return (
+                      <label key={a.id} className="flex items-center gap-2 rounded-lg border border-border p-2 cursor-pointer has-[:checked]:border-orange has-[:checked]:bg-peach-light">
+                        <Checkbox checked={data.amenities.includes(a.key)} onCheckedChange={() => toggleAmenity(a.key)} />
+                        <Icon className="h-4 w-4 text-navy/70" />
+                        <span className="text-sm">{a.label}</span>
+                      </label>
+                    )
+                  })}
+                  {allAmenities.length === 0 && (
+                    <p className="text-xs text-muted-foreground col-span-3">No amenities configured. Add some from the admin panel.</p>
+                  )}
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">{data.amenities.length} amenit{data.amenities.length === 1 ? 'y' : 'ies'} selected</p>
             </div>
           )}
@@ -613,7 +621,7 @@ export function CreateListingWizard() {
               <div className="rounded-xl border border-border p-4">
                 <h3 className="mb-3 font-semibold text-navy">{data.title || 'Untitled listing'}</h3>
                 <div className="grid gap-3 text-sm sm:grid-cols-2">
-                  <Review label="Type" value={`${CATEGORY_LABELS[data.category]} · ${data.roomType.toLowerCase()}`} />
+                  <Review label="Type" value={`${(propertyCategories.find((c: any) => c.key === data.category)?.label) || data.category} · ${data.roomType.toLowerCase()}`} />
                   <Review label="Location" value={`${data.neighborhood ? data.neighborhood + ', ' : ''}${data.city}, ${data.country}`} />
                   <Review label="Coordinates" value={data.lat && data.lng ? `${data.lat.toFixed(4)}, ${data.lng.toFixed(4)}` : 'Not set'} />
                   <Review label="Capacity" value={`${data.maxGuests} guests · ${data.bedrooms} beds · ${data.bathrooms} baths`} />
@@ -640,7 +648,7 @@ export function CreateListingWizard() {
         <Button variant="outline" onClick={prev} disabled={step === 0} className="rounded-full">
           <ArrowLeft className="mr-1 h-4 w-4" /> Back
         </Button>
-        {step < STEPS.length - 1 ? (
+        {step < wizardSteps.length - 1 ? (
           <Button onClick={handleNext} className="rounded-full bg-orange text-white hover:bg-orange/90">
             Next <ArrowRight className="ml-1 h-4 w-4" />
           </Button>

@@ -31,7 +31,6 @@ export const fetchListings = (params?: Record<string, any>) => getJSON('listings
 export const fetchListing = (id: string) => getJSON('listing', { id })
 export const searchListings = (params: Record<string, any>) => getJSON('search', params)
 export const fetchAvailability = (listingId: string) => getJSON('availability', { listingId })
-export const fetchDestinations = () => getJSON('destinations')
 export const fetchReviews = (listingId: string) => getJSON('reviews', { listingId })
 export const fetchExperiences = () => getJSON('experiences')
 export const fetchServices = () => getJSON('services')
@@ -170,3 +169,27 @@ export const shareWishlist = (wishlistId: string, recipientEmails?: string[]) =>
 // Update own profile (name, bio, country, avatarUrl)
 export const updateProfile = (data: { name?: string; bio?: string; country?: string; avatarUrl?: string; languages?: string; currency?: string }) =>
   postJSON<{ user: any }>('update-profile', data)
+
+// ============================================================
+// CONTENT TABLES (amenities, destinations, wizard-steps, categories)
+// ============================================================
+export const fetchAmenities = () => getJSON('amenities')
+export const fetchDestinations = (popularOnly) => {
+  if (popularOnly) return getJSON('destinations', { popular: 'true' })
+  return getJSON('destinations')
+}
+export const fetchWizardSteps = () => getJSON('wizard-steps')
+export const fetchCategories = () => getJSON('categories')
+
+// Admin content management
+export const fetchAdminAmenities = () => getJSON('admin-amenities')
+export const fetchAdminDestinations = () => getJSON('admin-destinations')
+export const fetchAdminWizardSteps = () => getJSON('admin-wizard-steps')
+export const fetchAdminCategories = () => getJSON('admin-categories')
+
+export const upsertContent = (table: 'amenity' | 'destination' | 'wizardStep' | 'propertyCategory', data: any, id?: string) =>
+  postJSON('admin-content-upsert', { table, id, data })
+export const deleteContent = (table: 'amenity' | 'destination' | 'wizardStep' | 'propertyCategory', id: string) =>
+  postJSON('admin-content-delete', { table, id })
+export const reorderContent = (table: 'amenity' | 'destination' | 'wizardStep' | 'propertyCategory', ids: string[]) =>
+  postJSON('admin-content-reorder', { table, ids })

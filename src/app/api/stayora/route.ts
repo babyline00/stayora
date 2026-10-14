@@ -456,6 +456,61 @@ export async function GET(req: NextRequest) {
         })
         return NextResponse.json({ markers: listings.filter(l => l.lat && l.lng) })
       }
+      // -------- Content tables (public read) --------
+      case 'amenities': {
+        const amenities = await db.amenity.findMany({
+          where: { active: true },
+          orderBy: [{ sortOrder: 'asc' }, { label: 'asc' }],
+        })
+        return NextResponse.json({ amenities })
+      }
+      case 'destinations': {
+        const popularOnly = url.searchParams.get('popular') === 'true'
+        const destinations = await db.destination.findMany({
+          where: popularOnly ? { popular: true } : undefined,
+          orderBy: { sortOrder: 'asc' },
+        })
+        return NextResponse.json({ destinations })
+      }
+      case 'wizard-steps': {
+        const steps = await db.wizardStep.findMany({
+          where: { active: true },
+          orderBy: { order: 'asc' },
+        })
+        return NextResponse.json({ steps })
+      }
+      case 'categories': {
+        const categories = await db.propertyCategory.findMany({
+          where: { active: true },
+          orderBy: { sortOrder: 'asc' },
+        })
+        return NextResponse.json({ categories })
+      }
+      // -------- Admin content management --------
+      case 'admin-amenities': {
+        const me = await requireAuth(['ADMIN'])
+        if (!me) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+        const amenities = await db.amenity.findMany({ orderBy: [{ sortOrder: 'asc' }, { label: 'asc' }] })
+        return NextResponse.json({ amenities })
+      }
+      case 'admin-destinations': {
+        const me = await requireAuth(['ADMIN'])
+        if (!me) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+        const destinations = await db.destination.findMany({ orderBy: { sortOrder: 'asc' } })
+        return NextResponse.json({ destinations })
+      }
+      case 'admin-wizard-steps': {
+        const me = await requireAuth(['ADMIN'])
+        if (!me) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+        const steps = await db.wizardStep.findMany({ orderBy: { order: 'asc' } })
+        return NextResponse.json({ steps })
+      }
+      case 'admin-categories': {
+        const me = await requireAuth(['ADMIN'])
+        if (!me) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+        const categories = await db.propertyCategory.findMany({ orderBy: { sortOrder: 'asc' } })
+        return NextResponse.json({ categories })
+      }
       default:
         return NextResponse.json({ error: 'unknown op' }, { status: 400 })
     }
@@ -994,6 +1049,87 @@ Pick at most 3 recommendations from the listings above. If the user's request do
           },
         })
         return NextResponse.json({ user: toSafeUser(updated) })
+      }
+      // ============================================================
+      // ADMIN CONTENT MANAGEMENT (CRUD for amenities, destinations,
+      // wizard-steps, property-categories)
+      // ============================================================
+      case 'admin-content-upsert': {
+        const me = await requireAuth(['ADMIN'])
+        if (!me) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+        const { table, id, data } = body
+        const allowedTables = ['amenity', 'destination', 'wizardStep', 'propertyCategory']
+        if (!allowedTables.includes(table)) return NextResponse.json({ error: 'invalid table' }, { status: 400 })
+        // Pick only safe fields per table
+        const safeData: any = {}
+        for (const [k, v] of Object.entries(data || {})) {
+          if (['id', 'createdAt', 'updatedAt'].includes(k)) continue
+          safeData[k] = v
+        }
+        try {
+          // @ts-ignore - prisma model accessor is dynamic
+          const result = id
+            ? await (db as any)[table].update({ where: { id }, data: safeData })
+            : await (db as any)[table].create({ data: safeData })
+          await db.auditLog.create({
+            data: {
+              actorId: me.id,
+              action: `CONTENT_${id ? 'UPDATE' : 'CREATE'}_${table.toUpperCase()}`,
+              resource: table,
+              resourceId: result.id,
+              metadata: JSON.stringify({ data: safeData }),
+              ip: '127.0.0.1',
+            },
+          })
+          return NextResponse.json({ record: result })
+        } catch (e: any) {
+          return NextResponse.json({ error: e.message || 'upsert failed' }, { status: 400 })
+        }
+      }
+      case 'admin-content-delete': {
+        const me = await requireAuth(['ADMIN'])
+        if (!me) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+        const { table, id } = body
+        const allowedTables = ['amenity', 'destination', 'wizardStep', 'propertyCategory']
+        if (!allowedTables.includes(table)) return NextResponse.json({ error: 'invalid table' }, { status: 400 })
+        try {
+          // @ts-ignore
+          await (db as any)[table].delete({ where: { id } })
+          await db.auditLog.create({
+            data: {
+              actorId: me.id,
+              action: `CONTENT_DELETE_${table.toUpperCase()}`,
+              resource: table,
+              resourceId: id,
+              ip: '127.0.0.1',
+            },
+          })
+          return NextResponse.json({ ok: true })
+        } catch (e: any) {
+          return NextResponse.json({ error: e.message || 'delete failed' }, { status: 400 })
+        }
+      }
+      case 'admin-content-reorder': {
+        const me = await requireAuth(['ADMIN'])
+        if (!me) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+        const { table, ids } = body
+        const allowedTables = ['amenity', 'destination', 'wizardStep', 'propertyCategory']
+        if (!allowedTables.includes(table)) return NextResponse.json({ error: 'invalid table' }, { status: 400 })
+        const orderField = table === 'wizardStep' ? 'order' : 'sortOrder'
+        for (let i = 0; i < ids.length; i++) {
+          // @ts-ignore
+          await (db as any)[table].update({ where: { id: ids[i] }, data: { [orderField]: i + 1 } })
+        }
+        await db.auditLog.create({
+          data: {
+            actorId: me.id,
+            action: `CONTENT_REORDER_${table.toUpperCase()}`,
+            resource: table,
+            metadata: JSON.stringify({ ids }),
+            ip: '127.0.0.1',
+          },
+        })
+        return NextResponse.json({ ok: true })
       }
       default:
         return NextResponse.json({ error: 'unknown op' }, { status: 400 })

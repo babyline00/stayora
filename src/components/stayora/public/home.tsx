@@ -3,31 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { fetchListings, searchListings, fetchRecentlyViewed } from '@/lib/api'
+import { useDestinations, useCategories } from '@/hooks/use-content'
+import { resolveIcon } from '@/lib/icon-resolver'
 import { PropertyCard } from '@/components/stayora/shared/property-card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Calendar, MapPin, Users, ArrowRight, Sparkles, ShieldCheck, Globe, Heart, Star, TrendingUp, Crown, Compass, Building2, Home, Trees, Ship, Tent, Clock } from 'lucide-react'
-
-const CATEGORIES = [
-  { id: 'VILLA', label: 'Villas', icon: Building2 },
-  { id: 'APARTMENT', label: 'Apartments', icon: Home },
-  { id: 'CABIN', label: 'Cabins', icon: Trees },
-  { id: 'LOFT', label: 'Lofts', icon: Building2 },
-  { id: 'TINYHOUSE', label: 'Tiny homes', icon: Tent },
-  { id: 'BOAT', label: 'Boats', icon: Ship },
-  { id: 'ROOM', label: 'Rooms', icon: Home },
-]
-
-const TRENDING_DESTINATIONS = [
-  { city: 'Lisbon', country: 'Portugal', img: 'https://images.unsplash.com/photo-1513735492236-0aaa1cd7d6f8?w=800&q=80' },
-  { city: 'Kyoto', country: 'Japan', img: 'https://images.unsplash.com/photo-1493976040374-85c547cbfc13?w=800&q=80' },
-  { city: 'Marrakech', country: 'Morocco', img: 'https://images.unsplash.com/photo-1539020157-029a4a9bddbb?w=800&q=80' },
-  { city: 'Cape Town', country: 'South Africa', img: 'https://images.unsplash.com/photo-1576488187728-8539c2e9c7e0?w=800&q=80' },
-  { city: 'Bali', country: 'Indonesia', img: 'https://images.unsplash.com/photo-1537996194471-e657df9756fd?w=800&q=80' },
-  { city: 'Barcelona', country: 'Spain', img: 'https://images.unsplash.com/photo-1583422409516-289528f1bfd4?w=800&q=80' },
-]
+import { Calendar, MapPin, Users, ArrowRight, Sparkles, ShieldCheck, Globe, Heart, Star, TrendingUp, Crown, Compass, Clock } from 'lucide-react'
 
 export function HomeView() {
   const { filters, setFilters, setView, openAuth, user, recentlyViewed, selectCity } = useAppStore()
@@ -36,6 +19,10 @@ export function HomeView() {
   const [recent, setRecent] = useState<any[]>([])
   const [recentlyViewedListings, setRecentlyViewedListings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+
+  // DB-driven content (popular destinations + property categories for quick-filter chips)
+  const { destinations: trendingDestinations, loading: destinationsLoading } = useDestinations()
+  const { categories: propertyCategories } = useCategories()
 
   useEffect(() => {
     Promise.all([
@@ -156,14 +143,14 @@ export function HomeView() {
       <section className="border-b border-border bg-white">
         <div className="mx-auto max-w-7xl px-6 py-4">
           <div className="flex flex-wrap items-center gap-2">
-            {CATEGORIES.map(c => {
-              const Icon = c.icon
-              const active = filters.category === c.id
+            {propertyCategories.map(c => {
+              const Icon = resolveIcon((c as any).icon)
+              const active = filters.category === (c as any).key
               return (
                 <button
-                  key={c.id}
+                  key={(c as any).id}
                   onClick={() => {
-                    setFilters({ category: active ? undefined : c.id })
+                    setFilters({ category: active ? undefined : (c as any).key })
                     setView('search')
                   }}
                   className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition ${
@@ -173,7 +160,7 @@ export function HomeView() {
                   }`}
                 >
                   <Icon className="h-4 w-4" />
-                  {c.label}
+                  {(c as any).label}
                 </button>
               )
             })}
@@ -206,24 +193,33 @@ export function HomeView() {
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-navy">Trending destinations</h2>
-            <p className="text-sm text-muted-foreground">Where Stayora guests are traveling this season.</p>
+            <p className="text-sm text-muted-foreground">Where Stayora guests are traveling this season. Managed by admins.</p>
           </div>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-            {TRENDING_DESTINATIONS.map(d => (
-              <button
-                key={d.city}
-                onClick={() => selectCity(d.city)}
-                className="group relative aspect-square overflow-hidden rounded-2xl bg-navy text-left"
-              >
-                <img src={d.img} alt={d.city} className="absolute inset-0 h-full w-full object-cover opacity-90 transition group-hover:scale-105 group-hover:opacity-100" />
-                <div className="absolute inset-0 bg-gradient-to-t from-navy/80 via-transparent to-transparent" />
-                <div className="absolute bottom-3 left-3 text-white">
-                  <div className="text-sm font-bold">{d.city}</div>
-                  <div className="text-xs text-white/80">{d.country}</div>
-                </div>
-              </button>
-            ))}
-          </div>
+          {destinationsLoading ? (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+              {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="aspect-square w-full rounded-2xl" />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+              {trendingDestinations.filter((d: any) => d.popular).slice(0, 6).map((d: any) => (
+                <button
+                  key={d.id}
+                  onClick={() => selectCity(d.city)}
+                  className="group relative aspect-square overflow-hidden rounded-2xl bg-navy text-left"
+                >
+                  <img src={d.image || ''} alt={d.city} className="absolute inset-0 h-full w-full object-cover opacity-90 transition group-hover:scale-105 group-hover:opacity-100" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-navy/80 via-transparent to-transparent" />
+                  <div className="absolute bottom-3 left-3 text-white">
+                    <div className="text-sm font-bold">{d.city}</div>
+                    <div className="text-xs text-white/80">{d.country}</div>
+                  </div>
+                </button>
+              ))}
+              {trendingDestinations.filter((d: any) => d.popular).length === 0 && (
+                <p className="text-sm text-muted-foreground col-span-6">No trending destinations configured. Add some from the admin panel.</p>
+              )}
+            </div>
+          )}
         </div>
       </section>
 

@@ -615,3 +615,59 @@ model ReferralCode {
   creditEarnedCents Int @default(0)
   createdAt   DateTime @default(now())
 }
+
+// ============================================================
+// CONTENT MANAGEMENT (admin-editable site config)
+// ============================================================
+
+model Amenity {
+  id        String   @id @default(cuid())
+  key       String   @unique // machine-readable: 'wifi', 'pool'
+  label     String   // human-readable: 'Wi-Fi', 'Pool'
+  icon      String   @default("check") // Lucide icon name string
+  category  String   @default("general") // general | safety | kitchen | bathroom | outdoor | accessibility
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Destination {
+  id           String   @id @default(cuid())
+  city         String   @unique
+  country      String
+  countryCode  String?
+  lat          Float
+  lng          Float
+  neighborhood String?  // default neighborhood for new listings
+  image        String?  // hero image URL
+  tagline      String?
+  description  String?
+  bestTime     String?  // best time to visit
+  popular      Boolean  @default(true) // show on homepage trending
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model WizardStep {
+  id        String   @id @default(cuid())
+  stepKey   String   @unique // 'type', 'location', 'capacity', 'amenities', 'photos', 'description', 'rules', 'availability', 'pricing', 'review'
+  label     String   // 'Property type', 'Location', etc.
+  icon      String   @default("check") // Lucide icon name
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PropertyCategory {
+  id        String   @id @default(cuid())
+  key       String   @unique // 'VILLA', 'APARTMENT', 'CABIN', etc.
+  label     String   // 'Villa', 'Apartment'
+  icon      String   @default("home") // Lucide icon name
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
