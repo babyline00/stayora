@@ -25,13 +25,15 @@ import { Checkbox } from '@/components/ui/checkbox'
 import {
   LayoutDashboard, Home, Calendar as CalendarIcon, Inbox, Wallet, BarChart3, Star, Users,
   MessageCircle, Crown, TrendingUp, DollarSign, Eye, Heart, Plus, Edit3, Eye as EyeIcon,
-  MoreVertical, ArrowRight, Check, X, Clock, Zap,
+  MoreVertical, ArrowRight, Check, X, Clock, Zap, ShieldCheck, Settings2,
 } from 'lucide-react'
+import { TodayTab, VerificationsTab, AccountSettingsTab } from '@/components/stayora/host/host-extras'
 
 // ============================================================
 // NAV CONFIG
 // ============================================================
 const TABS: { id: HostTab; label: string; icon: any }[] = [
+  { id: 'today', label: 'Today', icon: CalendarIcon },
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'listings', label: 'Listings', icon: Home },
   { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
@@ -41,6 +43,8 @@ const TABS: { id: HostTab; label: string; icon: any }[] = [
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'reviews', label: 'Reviews', icon: Star },
   { id: 'cohosts', label: 'Co-hosts', icon: Users },
+  { id: 'verifications', label: 'Verifications', icon: ShieldCheck },
+  { id: 'account-settings', label: 'Settings', icon: Settings2 },
   { id: 'create', label: 'Create listing', icon: Plus },
 ]
 
@@ -147,6 +151,7 @@ export function HostDashboard() {
           })}
         </div>
 
+        {hostTab === 'today' && <TodayTab />}
         {hostTab === 'overview' && (
           <OverviewTab listings={listings} bookings={bookings} payouts={payouts} stats={stats} loading={loading} onGoToTab={setHostTab} onCreateListing={() => setView('create-listing')} />
         )}
@@ -161,6 +166,8 @@ export function HostDashboard() {
         {hostTab === 'reviews' && <ReviewsTab bookings={bookings} loading={loading} />}
         {hostTab === 'cohosts' && <CoHostsTab listings={listings} />}
         {hostTab === 'create' && <CreateListingPlaceholder onCreateListing={() => setView('create-listing')} />}
+        {hostTab === 'verifications' && <VerificationsTab />}
+        {hostTab === 'account-settings' && <AccountSettingsTab />}
       </main>
     </div>
   )

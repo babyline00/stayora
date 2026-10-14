@@ -218,3 +218,13 @@ export const fetchEmailTemplates = () => getJSON('email-templates')
 export const fetchEmailTemplate = (key: string) => getJSON('email-template', { key })
 export const upsertEmailTemplate = (data: any, id?: string) => postJSON('admin-email-template-upsert', { id, ...data })
 export const deleteEmailTemplate = (id: string) => postJSON('admin-email-template-delete', { id })
+
+// ============================================================
+// HOST TODAY + VERIFICATIONS + ACCOUNT SETTINGS
+// ============================================================
+export const fetchToday = () => getJSON('today')
+export const fetchVerifications = () => getJSON('verifications')
+export const startVerification = (type: string, payload?: string) => postJSON('start-verification', { type, payload })
+export const fetchAccountSettings = () => getJSON('account-settings')
+export const updateNotificationPreferences = (data: { emailEnabled?: boolean; pushEnabled?: boolean; smsEnabled?: boolean; marketingEnabled?: boolean }) => postJSON('update-notification-preferences', data)
+export const updateAccountSettings = (data: { phone?: string; languages?: string; currency?: string }) => postJSON('update-account-settings', data)

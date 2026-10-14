@@ -1,0 +1,908 @@
+# Stayora Host Dashboard — Complete Features, Pages & Functions
+
+Based on your uploaded Airbnb screenshots, this continuation focuses specifically on the host side: creating a property listing, managing it after publication, handling Today's tasks, Messages, Edits, Verifications, and the complete listing creation wizard through Step 8 and beyond.
+
+The screenshots show several important Airbnb workflows: the host Listings dashboard, account settings, property type selection, location pin placement, guest capacity, amenities, photo uploads, title and description, safety disclosures, pricing, discounts, booking settings, and final publication.
+
+For Stayora, these should be implemented as functional pages with saved data, validation, real actions, and clear progress—not just as static screens.
+
+## 1. Host dashboard navigation
+
+Today
+
+Daily hosting overview, arrivals, departures, tasks, and urgent actions.
+
+Calendar
+
+Availability, reservations, blocked dates, nightly prices, and minimum stays.
+
+Listings
+
+Create, edit, preview, publish, pause, and manage properties.
+
+Messages
+
+Guest inquiries, reservation conversations, unread messages, and quick replies.
+
+Verifications
+
+Phone, email, identity, residential details, payout setup, and listing requirements.
+
+Account settings
+
+Personal information, login and security, privacy, notifications, taxes, payments, language, and booking permissions.
+
+The host dashboard should also provide access to earnings, analytics, reviews, co-host management, support, and professional hosting tools. Keep these accessible without overcrowding the main navigation.
+
+## 2. Today page — complete functions
+
+The Today page is the host's daily command center. It should show what requires attention right now, rather than simply displaying analytics.
+
+### Page layout
+
+# Today
+
+Your daily hosting overview
+
+Arrivals today
+
+# —
+
+Departures today
+
+# —
+
+Pending requests
+
+# —
+
+Unread messages
+
+# —
+
+Illustrative dashboard layout. Values must be populated from actual Stayora records.
+
+### Today page features
+
+A. Arrivals and departures
+
+- Today's check-ins and check-outs.
+- Guest name and reservation reference.
+- Property name and booking dates.
+- Expected arrival or departure time.
+- Guest count.
+- Check-in instructions and access details.
+- Cleaning or turnover task status.
+- Contact guest action.
+- Open reservation details.
+
+B. Reservations requiring action
+
+- New booking requests.
+- Requests awaiting a host response.
+- Upcoming bookings with missing guest information.
+- Reservations with unresolved payment issues.
+- Cancellation and modification requests.
+- Bookings approaching check-in with incomplete preparation.
+
+C. Daily task management
+
+- Prepare the property.
+- Confirm cleaning.
+- Inspect amenities and safety equipment.
+- Send arrival instructions.
+- Respond to guest questions.
+- Review upcoming reservations.
+- Mark tasks complete.
+- Assign tasks to a co-host or authorized team member.
+- Set task deadlines and reminders.
+
+D. Performance snapshot
+
+- Recent earnings.
+- Upcoming reservation revenue.
+- Occupancy summary.
+- Listing views and conversion.
+- Recent guest ratings.
+- Payout alerts.
+
+E. Quick actions
+
+- Add a new listing.
+- Open the calendar.
+- Create a reservation block.
+- Open the inbox.
+- Edit a property.
+- View earnings.
+- Start identity verification.
+- Contact support.
+
+### Today page business rules
+
+- Use the property’s local time zone for check-in and check-out dates.
+- Exclude cancelled reservations from active arrival counts.
+- Do not display private guest information to unauthorized co-hosts.
+- Update counts when reservation statuses change.
+- Display clear empty states when there are no arrivals or tasks.
+- Provide links from every task or alert to the relevant page.
+
+## 3. Calendar page — host availability management
+
+The calendar is a central operational tool and must be connected to the booking engine.
+
+### Main calendar views
+
+- Monthly view.
+- Multi-month view.
+- Date-range view.
+- Per-property calendar.
+- Multi-property overview for hosts with several listings.
+- List view of upcoming reservations.
+
+### Calendar actions
+
+- Open and close dates.
+- Block personal-use dates.
+- Unblock dates.
+- Change nightly prices.
+- Set minimum nights.
+- Set maximum nights.
+- Configure arrival and departure restrictions.
+- Add preparation buffers.
+- Create seasonal pricing rules.
+- Apply bulk updates to a selected date range.
+- Navigate to previous and next months.
+- Filter by listing and reservation status.
+- View reservation details by selecting a booking.
+- Import or export external calendar feeds where supported.
+- See synchronization errors and resolve conflicts.
+
+### Calendar status indicators
+
+| Status      | Display and behavior                                    |
+| ----------- | ------------------------------------------------------- |
+| Available   | Accept eligible bookings                                |
+| Reserved    | Show the existing reservation                           |
+| Blocked     | Prevent new bookings                                    |
+| Pending     | Apply the configured temporary reservation rules        |
+| Unavailable | Prevent bookings due to restrictions or inventory rules |
+| Sync issue  | Show a warning and offer recovery actions               |
+
+### Required validation
+
+1. The host cannot accidentally overwrite an existing confirmed booking.
+2. A date-range price update must preserve unrelated date overrides.
+3. Blocked dates must be excluded from search availability.
+4. Calendar updates must be persisted to the backend.
+5. External calendar synchronization must not be treated as infallible.
+6. Concurrent booking attempts must be resolved by server-side inventory controls.
+
+## 4. Messages page — complete messaging system
+
+Your Messages page should work as a real-time or near-real-time communication center between hosts and guests.
+
+## Inbox interface
+
+AllUnreadArchived
+
+Guest conversationUpcoming bookingQuestion about check-inNew inquiryPre-bookingUnreadIs parking available?Past reservationCompleted stayThank you for hosting
+
+### Conversation tools
+
+Open a conversation to view the reservation context, send a message, use saved replies, or access reporting and support actions.
+
+Expand conversation screen specification
+
+This is a functional inbox prototype with sample conversations, not a connection to real guest messages.
+
+### Messaging features and functions
+
+Inbox management
+
+- All conversations.
+- Unread messages.
+- Archived conversations.
+- Search by guest, property, reservation reference, or message text.
+- Filter by booking status and listing.
+- Sort by most recent activity.
+- Unread counters.
+- Conversation previews.
+- Last-message timestamps.
+- Pin or prioritize conversations if supported.
+
+Conversation details
+
+- Guest name and permitted profile information.
+- Property details.
+- Reservation status and dates.
+- Guest count.
+- Complete message history.
+- Sent and received timestamps.
+- Message delivery status.
+- Attachments and images where supported.
+- Links to booking details.
+- Contextual check-in and checkout information.
+
+Message composer
+
+- Text input.
+- Send action.
+- Enter-to-send behavior with an accessible alternative.
+- Attachment upload with type and size validation.
+- Sending, sent, failed, and retry states.
+- Draft preservation where appropriate.
+- Saved replies.
+- Quick responses for common questions.
+- Support for localization and time zones.
+
+Saved replies
+
+- Check-in instructions.
+- Directions and parking.
+- Wi-Fi instructions.
+- House rules.
+- Check-out instructions.
+- Availability responses.
+- Booking inquiry responses.
+- Custom host templates.
+
+Communication controls
+
+- Email or push notifications for new messages.
+- In-app unread state.
+- Mark as read or unread.
+- Report a conversation or message.
+- Block or restrict interactions when appropriate.
+- Escalate a conversation to customer support.
+- Preserve conversation history according to retention rules.
+
+### Messaging technical requirements
+
+- Associate conversations with the correct participants and, where relevant, reservation.
+- Verify permissions on every message request.
+- Store message history in persistent storage.
+- Prevent duplicate sends on retries.
+- Validate and securely store attachments.
+- Rate-limit spam and abuse.
+- Use WebSockets or a managed messaging service if real-time delivery is needed.
+- Keep delivery status separate from whether the recipient has read the message.
+
+## 5. Listings page — host property management
+
+The Listings page should resemble the dashboard shown in your screenshots, including property cards, status labels, a prominent add-listing action, and a phone-verification prompt when publication requires it.
+
+### Listings overview
+
+- All listings.
+- Published listings.
+- Draft listings.
+- In-progress listings.
+- Listings requiring action.
+- Paused listings.
+- Listings under review.
+- Restricted listings.
+- Archived listings.
+- Search and filters.
+- Grid and list views.
+- Sorting by status, name, creation date, and performance.
+
+### Property card functions
+
+Each card should include:
+
+- Main property photo.
+- Property title.
+- Location.
+- Publication or draft status.
+- Missing-information warning.
+- Verification warning where relevant.
+- Listing completion percentage.
+- Last-updated date.
+- Preview listing.
+- Edit listing.
+- Open calendar.
+- View reservations.
+- View performance.
+- Pause or reactivate listing.
+- Archive listing where permitted.
+
+### Listing status logic
+
+| Status          | Meaning                                                                    |
+| --------------- | -------------------------------------------------------------------------- |
+| Draft           | Saved but not ready for publication                                        |
+| In progress     | Listing wizard is incomplete                                               |
+| Action required | A required field, verification, or compliance task remains                 |
+| Pending review  | Waiting for a review process where applicable                              |
+| Published       | Available for eligible guests to discover and book                         |
+| Paused          | Temporarily unavailable for new bookings                                   |
+| Restricted      | Publication or booking disabled due to a policy or compliance issue        |
+| Archived        | Removed from the active management view while preserving necessary records |
+
+Important: A listing being published does not mean every date is bookable. Availability, eligibility, account restrictions, and property rules must still be checked.
+
+## 6. Edits — complete listing editing system
+
+Editing must be available both during the initial listing wizard and after publication.
+
+### 6.1 Edit listing landing page
+
+When the host selects Edit listing, open a structured editor with the following sections.
+
+Property type and basics
+
+Property category, accommodation type, capacity, bedrooms, beds, bathrooms.
+
+Location
+
+Address, map coordinates, location visibility, and directions.
+
+Photos and media
+
+Upload, delete, reorder, replace, caption, and choose cover image.
+
+Title and description
+
+Listing title, highlights, description, and language versions.
+
+Amenities
+
+Available facilities, safety equipment, accessibility, and room amenities.
+
+Safety and rules
+
+Security disclosures, house rules, restrictions, and emergency details.
+
+Availability
+
+Booking window, minimum stay, blocked dates, and preparation time.
+
+Pricing and discounts
+
+Nightly prices, seasonal adjustments, fees, promotions, and stay discounts.
+
+Booking settings
+
+Instant Book eligibility, approval requirements, and booking preferences.
+
+Legal and verification
+
+Required host details, applicable tax information, and compliance status.
+
+### 6.2 Editing behavior
+
+- Load existing saved values into every field.
+- Show the last-saved state.
+- Save changes without accidentally resetting other sections.
+- Support explicit Save and Cancel actions.
+- Validate required fields before saving or publishing.
+- Display field-level errors and actionable messages.
+- Warn about unsaved changes before navigating away.
+- Keep draft edits when the user returns later.
+- Preview the listing before applying changes to the public version.
+- Record the editor, changed fields, and timestamp.
+- Allow authorized co-hosts to edit only permitted sections.
+- Maintain the published listing if a draft edit is incomplete.
+- Apply changes to the public listing only according to the chosen save/publish model.
+
+### 6.3 Important edit restrictions
+
+- Changing the address may trigger location or compliance revalidation.
+- Reducing capacity must not invalidate existing confirmed reservations without an appropriate resolution.
+- Changing nightly prices must not silently alter a confirmed booking's agreed price.
+- Changing cancellation rules must not retroactively override the policy attached to existing bookings.
+- Editing photos must not break existing image references or public listing URLs.
+- Changing safety disclosures must update the public safety information and audit history.
+
+## 7. Verifications — complete host verification center
+
+The screenshot of account settings includes personal information, legal name, email, phone numbers, identity verification, residential address, mailing address, and emergency contact. Stayora should bring all required account and listing checks into one verification center.
+
+### 7.1 Verification dashboard
+
+## Host verification
+
+Complete the required checks to unlock eligible hosting and payout features.
+
+Email address
+
+Not connected
+
+Phone number
+
+Not connected
+
+Identity verification
+
+Not started
+
+Residential address
+
+Incomplete
+
+Payout method
+
+Not connected
+
+Tax information
+
+Depends on market
+
+Listing requirements
+
+Check required fields
+
+Example status layout only. Actual verification states must come from Stayora's backend and verification providers.
+
+### 7.2 Email verification
+
+- Enter or edit email address.
+- Send verification link or code.
+- Resend after a rate-limited interval.
+- Validate the code or signed verification link.
+- Display verified date and current status.
+- Prevent unauthorized email changes.
+- Notify the previous verified address about changes where appropriate.
+- Provide recovery if access to the old email is lost.
+
+### 7.3 Phone verification
+
+- Country code selector.
+- Phone number input.
+- OTP by SMS or supported alternative.
+- Code expiry.
+- Resend-code countdown.
+- Attempt limits and abuse prevention.
+- Invalid and expired code errors.
+- Verified number display.
+- Change number workflow.
+- Notify the account owner when a number changes.
+
+Phone verification may be required before publishing, depending on the platform's policy.
+
+### 7.4 Identity verification
+
+- Start verification.
+- Explain why verification is required.
+- Collect only required information.
+- Redirect to or embed an approved identity verification provider.
+- Capture provider result and reference ID.
+- Display pending, verified, failed, or additional-information-required states.
+- Support a retry or appeal process.
+- Notify the host of status changes.
+- Restrict access to sensitive verification details.
+- Record the verification event and authorized administrative decisions.
+
+Do not store identity-document images or biometric data unnecessarily. Use a compliant provider and follow the retention rules that apply to your market.
+
+### 7.5 Residential and mailing address
+
+Fields may include:
+
+- Country or region.
+- Street address.
+- Apartment, floor, or unit.
+- City or town.
+- Province, state, or territory.
+- Postal code.
+- Mailing address, if different.
+- Business-hosting designation where relevant.
+
+Functions:
+
+- Save and edit address.
+- Validate required fields.
+- Normalize address format.
+- Verify address through an appropriate provider when required.
+- Keep residential information private from guests.
+- Display verification status.
+- Track changes.
+- Require renewed verification only when justified by policy.
+
+### 7.6 Business-host verification
+
+For hosts operating as a registered business:
+
+- Business name.
+- Registration country.
+- Business registration number when required.
+- Business address.
+- Authorized representative.
+- Tax information where applicable.
+- Required business documentation.
+- Verification status and expiry where relevant.
+
+### 7.7 Payout verification
+
+- Choose a supported payout method.
+- Submit required account details through a payment provider.
+- Verify account ownership where supported.
+- Confirm the account is eligible for payouts.
+- Display pending or failed setup.
+- Allow updates with appropriate security checks.
+- Notify the host of changes.
+- Prevent unauthorized payout destination changes.
+- Record payout account events without exposing full sensitive credentials.
+
+### 7.8 Verification statuses and actions
+
+| Status          | Host action                                                 |
+| --------------- | ----------------------------------------------------------- |
+| Not started     | Start the verification                                      |
+| In progress     | Complete the remaining requested steps                      |
+| Pending review  | Wait for provider or authorized review                      |
+| Verified        | Continue with eligible hosting actions                      |
+| Action required | Supply missing or corrected information                     |
+| Failed          | Review the reason and retry or appeal if available          |
+| Expired         | Renew when required                                         |
+| Restricted      | Contact support or follow the prescribed resolution process |
+
+Verification should be represented as separate records for email, phone, identity, address, payout, and tax requirements—not as one universal verified/unverified field.
+
+## 8. Create a listing — complete wizard, including Step 8
+
+The listing creation experience should be a multi-step wizard. Hosts must be able to move backward, save progress, resume later, and see which requirements remain.
+
+The following is the recommended Stayora sequence based on your screenshots and the Airbnb-inspired workflow.
+
+### 1
+
+### Choose property type
+
+Select an entire place, private room, shared room, or other supported accommodation type. Then select the specific property category, such as house, apartment, cabin, villa, guesthouse, or unique stay.
+
+### 2
+
+### Set property location
+
+Enter the country, address, city, region, postal code, and map position. Configure whether the guest sees an approximate or precise location before booking.
+
+### 3
+
+### Share property basics
+
+Set maximum guests, bedrooms, beds, bathrooms, sleeping arrangements, and other capacity details.
+
+### 4
+
+### Add amenities and safety equipment
+
+Choose Wi-Fi, kitchen, air conditioning, parking, pool, workspace, accessibility features, smoke alarms, carbon monoxide alarms, and other applicable facilities.
+
+### 5
+
+### Upload property photos
+
+Upload and reorder images, choose a cover image, organize room photos, add captions, validate image quality, and remove duplicates.
+
+### 6
+
+### Create title and description
+
+Enter a short property title, choose suitable highlights, write a detailed description, and preview how the listing will appear.
+
+### 7
+
+### Add safety details and house rules
+
+Disclose exterior cameras, noise monitors, weapons, and other required safety information. Configure smoking, parties, pets, quiet hours, check-in/out, and occupancy rules.
+
+### 8
+
+### Configure availability and booking settings
+
+Set the booking window, minimum and maximum nights, blocked dates, preparation gaps, check-in restrictions, reservation approval mode, and any supported instant-book eligibility.
+
+### 9
+
+### Set nightly prices and discounts
+
+Configure the base price, weekend and seasonal adjustments, weekly/monthly discounts, promotions, cleaning fees, and applicable charges.
+
+### 10
+
+### Complete host and payout verification
+
+Provide required contact information, identity and address verification, payout setup, and tax information where required.
+
+### 11
+
+### Review and publish
+
+Validate all sections, preview the public listing, resolve missing requirements, confirm the applicable policies, and publish or save the draft.
+
+### Wizard navigation functions
+
+Every step should support:
+
+- Back.
+- Next.
+- Save and exit.
+- Save draft automatically where appropriate.
+- Progress indicator.
+- Validation messages.
+- Resume from the last completed section.
+- Skip optional fields where permitted.
+- Help and contextual explanations.
+- Listing preview where applicable.
+- Unsaved-change protection.
+
+A listing should not be published just because the host reaches the final step. Publication must depend on required information, eligibility, applicable verification, and moderation requirements.
+
+## 9. Step 8 — availability and booking settings in detail
+
+This step is especially important because it determines when guests can reserve a property and how reservations are accepted.
+
+# Step 8: Configure booking settings
+
+Recommended Stayora form structure
+
+### A. Booking method
+
+Approve booking requests
+
+Instant Book for eligible reservations
+
+Host approval is required before the reservation becomes confirmed.
+
+### B. Minimum and maximum stay
+
+Minimum nights1 night
+
+Maximum nights30 nights
+
+### C. Booking window
+
+How far ahead can guests book?12 months
+
+Minimum advance noticeSame day
+
+### D. Preparation time
+
+Gap between reservations
+
+No preparation gap
+
+1 night between stays
+
+2 nights between stays
+
+### E. Check-in window
+
+Check-in from3:00 PM
+
+Check-in until10:00 PM
+
+### Configuration summary
+
+Booking method
+
+Host approval
+
+Stay duration
+
+1–30 nights
+
+Booking window
+
+12 months
+
+Advance notice
+
+Same day
+
+Preparation gap
+
+1 night
+
+Check-in window
+
+15:00–22:00
+
+Generate Step 8 implementation requirements
+
+Interactive requirements preview only. These choices have not been saved to a property or connected to the booking engine.
+
+### Step 8 backend rules
+
+- Reject invalid minimum and maximum stay combinations.
+- Calculate eligible check-in dates using the booking window and advance notice.
+- Apply preparation gaps to calendar availability.
+- Apply arrival and departure restrictions to the correct local dates.
+- Revalidate all settings against existing confirmed bookings.
+- Require Instant Book eligibility before enabling automatic confirmation.
+- Keep booking requests separate from confirmed reservations.
+- Record changes to booking settings.
+- Recalculate search availability after the settings change.
+- Ensure a host cannot make dates unavailable in a way that silently invalidates confirmed reservations.
+
+## 10. Step 9 — pricing and discounts
+
+The pricing step should let the host configure rates while showing how the changes affect potential bookings.
+
+### Pricing page
+
+- Base nightly price.
+- Weekend adjustment.
+- Seasonal and date-specific prices.
+- Minimum and maximum nightly price limits.
+- Weekly discount.
+- Monthly discount.
+- New-listing promotion.
+- Last-minute discount.
+- Early-booking discount.
+- Cleaning fee.
+- Additional guest fee where permitted.
+- Applicable taxes and service charges.
+- Currency and rounding rules.
+- Price preview for selected dates.
+- Similar-property pricing comparison where reliable data is available.
+
+### Discount management
+
+Each discount needs:
+
+- Discount type.
+- Percentage or fixed amount.
+- Eligible stay duration.
+- Eligible booking dates.
+- Applicable booking window.
+- Start and end dates.
+- Maximum usage if supported.
+- Eligibility rules.
+- Combination rules.
+- Preview of the discounted price.
+- Enable/disable action.
+- Change history.
+
+Business rule: Define whether discounts stack or compete. If only one promotion can apply, the pricing engine must consistently select the eligible discount according to documented rules and display the result before checkout.
+
+## 11. Step 10 — final host details and verifications
+
+Before publication, show a checklist of outstanding requirements.
+
+| Requirement           | Function                                           |
+| --------------------- | -------------------------------------------------- |
+| Contact information   | Verify the host's email and phone if required      |
+| Residential address   | Collect and validate required address fields       |
+| Identity              | Complete required identity checks                  |
+| Business information  | Collect details when hosting as a business         |
+| Payout method         | Configure an eligible payout account               |
+| Tax information       | Complete applicable tax requirements               |
+| Listing details       | Validate all required fields and photos            |
+| Safety disclosures    | Confirm required safety information                |
+| Booking configuration | Validate dates, restrictions, and booking settings |
+| Legal agreements      | Accept applicable terms and policies               |
+
+The page should show the exact action required for each incomplete item. Do not ask the host to repeat information already validly collected unless a policy or verification requirement justifies it.
+
+## 12. Step 11 — preview and publish
+
+### Publication review page
+
+The host should be able to review:
+
+- Cover photo and photo gallery.
+- Property title and description.
+- Property type and capacity.
+- Amenities and safety details.
+- Location display.
+- House rules.
+- Availability settings.
+- Pricing and discounts.
+- Booking method.
+- Verification requirements.
+- Publication eligibility.
+
+### Publish button behavior
+
+1. Validate required listing fields.
+2. Verify the host has permission to publish.
+3. Check required verification and compliance statuses.
+4. Validate pricing and availability configuration.
+5. Display unresolved issues with links to fix them.
+6. Submit the publication request.
+7. Save the listing status on the server.
+8. Show the actual result returned by the backend.
+9. Update the Listings dashboard.
+10. Make the property discoverable only when publication and eligibility rules allow it.
+
+The listing should remain a draft or action-required item if publication fails. Display a clear error instead of silently showing it as published.
+
+## 13. Account settings — all host pages
+
+Your first screenshot shows the Airbnb Account Settings interface. Stayora should include equivalent settings organized into individual pages.
+
+Personal information
+
+Legal name, preferred name, email, phone, address, emergency contact
+
+Login and security
+
+Password, sessions, multi-factor authentication, recovery methods
+
+Privacy
+
+Profile visibility, data sharing, account data requests
+
+Notifications
+
+Email, push, SMS, booking and marketing preferences
+
+Taxes
+
+Applicable tax forms, business tax details, tax status
+
+Payments and payouts
+
+Payment methods, payout accounts, transaction history
+
+Languages and translation
+
+Preferred language, translation preferences, currency
+
+Booking permissions
+
+Who can book, eligibility rules, applicable booking requirements
+
+Travel for work
+
+Business travel preferences where the platform supports them
+
+Professional hosting tools
+
+Advanced listing management, team access, reports, and integrations
+
+Co-hosts and team
+
+Invitations, role assignments, listing access, permission changes
+
+Account closure
+
+Deletion requests, outstanding reservations, financial obligations, data handling
+
+Every settings page needs:
+
+- Existing-value display.
+- Edit or Add action.
+- Save and Cancel controls.
+- Validation.
+- Permission checks.
+- Clear success and failure states.
+- Confirmation for sensitive changes.
+- Audit logging for security-sensitive actions.
+
+## 14. Additional host pages that should not be missed
+
+| Page                     | Main functionality                                                               |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| Reservations             | View and manage bookings, requests, changes, and cancellations                   |
+| Earnings                 | Revenue, fees, adjustments, and net earnings                                     |
+| Payouts                  | Payout methods, payout history, failures, and reconciliation                     |
+| Reviews                  | Guest reviews, eligible responses, and feedback                                  |
+| Analytics                | Views, conversion, occupancy, and revenue trends                                 |
+| Co-host management       | Invite collaborators and configure permissions                                   |
+| Cleaning and maintenance | Assign turnover tasks and track property readiness                               |
+| Support                  | Create tickets, communicate with support, and track resolutions                  |
+| Host resources           | Policies, educational guides, and hosting advice                                 |
+| Notifications            | Booking alerts, messages, verification reminders, and account changes            |
+| Listing quality          | Missing information, photo issues, incomplete sections, and eligibility warnings |
+| Calendar synchronization | External calendar feeds and conflict resolution                                  |
+| Team activity            | Track permitted changes by co-hosts and team members                             |
+
+## 15. Final implementation requirements
+
+To make all of these pages work together, Stayora needs:
+
+1. Persistent data: Listings, drafts, edits, calendars, messages, verification records, and settings must be saved in the database.
+2. Role-based permissions: Guests, hosts, co-hosts, and administrators must see only the actions and information they are authorized to access.
+3. Shared listing data: The wizard, listing editor, public property page, calendar, and admin panel must use the same underlying listing record.
+4. Verification integration: Store verification statuses and provider references securely.
+5. Real messaging: Persist conversations and messages; do not use hardcoded sample conversations in production.
+6. Reliable booking logic: Prevent conflicting reservations and preserve confirmed booking terms.
+7. Consistent status management: Update the Listings page, Today page, calendar, and notifications when a booking or listing changes.
+8. Responsive UI: Support desktop, tablet, and mobile screens.
+9. Accessible forms: Use clear labels, keyboard navigation, field-level errors, and appropriate focus management.
+10. Audit and recovery: Record important changes and support safe retries after network or provider failures.
+
+Recommended build order: Start with the listing wizard and Step 8 settings, then implement listing editing, verification, the Today page, Messages, calendar, and reservation management. Once these workflows are connected to persistent data and tested end to end, expand the host dashboard with payouts, analytics, co-hosting, and advanced tools.

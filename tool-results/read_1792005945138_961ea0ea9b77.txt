@@ -1,0 +1,1668 @@
+     1→'use client'
+     2→
+     3→import { useEffect, useState } from 'react'
+     4→import { useAppStore, HostTab } from '@/store/useAppStore'
+     5→import {
+     6→  fetchHostDashboard, updateListingStatus, sendMessage, fetchConversations, fetchMessages,
+     7→  markRead, fetchNotifications, createListing,
+     8→} from '@/lib/api'
+     9→import { formatPrice, formatDate, formatRelativeDate, formatNumber, CATEGORY_LABELS, CANCELLATION_LABELS } from '@/lib/format'
+    10→import { Button } from '@/components/ui/button'
+    11→import { Input } from '@/components/ui/input'
+    12→import { Textarea } from '@/components/ui/textarea'
+    13→import { Label } from '@/components/ui/label'
+    14→import { Badge } from '@/components/ui/badge'
+    15→import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+    16→import { Skeleton } from '@/components/ui/skeleton'
+    17→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+    18→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+    19→import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+    20→import { Calendar } from '@/components/ui/calendar'
+    21→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    22→import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+    23→import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+    24→import { Checkbox } from '@/components/ui/checkbox'
+    25→import {
+    26→  LayoutDashboard, Home, Calendar as CalendarIcon, Inbox, Wallet, BarChart3, Star, Users,
+    27→  MessageCircle, Crown, TrendingUp, DollarSign, Eye, Heart, Plus, Edit3, Eye as EyeIcon,
+    28→  MoreVertical, ArrowRight, Check, X, Clock, Zap,
+    29→} from 'lucide-react'
+    30→
+    31→// ============================================================
+    32→// NAV CONFIG
+    33→// ============================================================
+    34→const TABS: { id: HostTab; label: string; icon: any }[] = [
+    35→  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    36→  { id: 'listings', label: 'Listings', icon: Home },
+    37→  { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
+    38→  { id: 'reservations', label: 'Reservations', icon: Clock },
+    39→  { id: 'inbox', label: 'Inbox', icon: Inbox },
+    40→  { id: 'earnings', label: 'Earnings', icon: Wallet },
+    41→  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    42→  { id: 'reviews', label: 'Reviews', icon: Star },
+    43→  { id: 'cohosts', label: 'Co-hosts', icon: Users },
+    44→  { id: 'create', label: 'Create listing', icon: Plus },
+    45→]
+    46→
+    47→// ============================================================
+    48→// MAIN COMPONENT
+    49→// ============================================================
+    50→export function HostDashboard() {
+    51→  const { user, hostTab, setHostTab, setView } = useAppStore()
+    52→  const [listings, setListings] = useState<any[]>([])
+    53→  const [bookings, setBookings] = useState<any[]>([])
+    54→  const [payouts, setPayouts] = useState<any[]>([])
+    55→  const [stats, setStats] = useState<any>(null)
+    56→  const [loading, setLoading] = useState(true)
+    57→
+    58→  const refreshAll = () => {
+    59→    setLoading(true)
+    60→    fetchHostDashboard()
+    61→      .then((d: any) => {
+    62→        setListings(d.listings || [])
+    63→        setBookings(d.bookings || [])
+    64→        setPayouts(d.payouts || [])
+    65→        setStats(d.stats || null)
+    66→      })
+    67→      .catch(() => {
+    68→        setListings([])
+    69→        setBookings([])
+    70→        setPayouts([])
+    71→        setStats(null)
+    72→      })
+    73→      .finally(() => setLoading(false))
+    74→  }
+    75→
+    76→  // Initial data fetch when the host user changes. Defers setState to a microtask
+    77→  // so we never call setState synchronously in the effect body (avoids cascading renders).
+    78→  useEffect(() => {
+    79→    let cancelled = false
+    80→    Promise.resolve()
+    81→      .then(() => { if (!cancelled) refreshAll() })
+    82→    return () => { cancelled = true }
+    83→  }, [user?.id])
+    84→
+    85→  if (!user) return null
+    86→
+    87→  const handleNav = (tab: HostTab) => {
+    88→    if (tab === 'create') {
+    89→      // Create-listing wizard lives in the parent app — switch views.
+    90→      setView('create-listing')
+    91→      return
+    92→    }
+    93→    setHostTab(tab)
+    94→  }
+    95→
+    96→  // Pending reservations count badge
+    97→  const pendingReservations = bookings.filter((b: any) => b.status === 'PENDING').length
+    98→
+    99→  return (
+   100→    <div className="mx-auto flex max-w-7xl gap-6 px-4 py-6 sm:px-6">
+   101→      {/* Left sidebar */}
+   102→      <aside className="hidden w-60 shrink-0 lg:block">
+   103→        <div className="sticky top-20 rounded-2xl border border-border bg-white p-2">
+   104→          <HostProfileCard user={user} />
+   105→          <nav className="mt-2 space-y-0.5">
+   106→            {TABS.map(t => {
+   107→              const Icon = t.icon
+   108→              const active = hostTab === t.id
+   109→              return (
+   110→                <button
+   111→                  key={t.id}
+   112→                  onClick={() => handleNav(t.id)}
+   113→                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+   114→                    active ? 'bg-navy text-white' : 'text-navy/80 hover:bg-peach-light/60 hover:text-navy'
+   115→                  }`}
+   116→                >
+   117→                  <Icon className="h-4 w-4" />
+   118→                  <span className="flex-1 text-left">{t.label}</span>
+   119→                  {t.id === 'reservations' && pendingReservations > 0 && (
+   120→                    <Badge variant="secondary" className={`text-[10px] ${active ? 'bg-white/20 text-white' : 'bg-orange text-white'}`}>{pendingReservations}</Badge>
+   121→                  )}
+   122→                </button>
+   123→              )
+   124→            })}
+   125→          </nav>
+   126→        </div>
+   127→      </aside>
+   128→
+   129→      {/* Main content */}
+   130→      <main className="min-w-0 flex-1">
+   131→        {/* Mobile tab pills */}
+   132→        <div className="mb-4 flex gap-1 overflow-x-auto pb-1 lg:hidden stayora-scroll">
+   133→          {TABS.map(t => {
+   134→            const Icon = t.icon
+   135→            const active = hostTab === t.id
+   136→            return (
+   137→              <button
+   138→                key={t.id}
+   139→                onClick={() => handleNav(t.id)}
+   140→                className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${
+   141→                  active ? 'bg-navy text-white' : 'bg-peach-light/60 text-navy'
+   142→                }`}
+   143→              >
+   144→                <Icon className="h-3.5 w-3.5" /> {t.label}
+   145→              </button>
+   146→            )
+   147→          })}
+   148→        </div>
+   149→
+   150→        {hostTab === 'overview' && (
+   151→          <OverviewTab listings={listings} bookings={bookings} payouts={payouts} stats={stats} loading={loading} onGoToTab={setHostTab} onCreateListing={() => setView('create-listing')} />
+   152→        )}
+   153→        {hostTab === 'listings' && (
+   154→          <ListingsTab listings={listings} loading={loading} onRefresh={refreshAll} onCreateListing={() => setView('create-listing')} />
+   155→        )}
+   156→        {hostTab === 'calendar' && <CalendarTab listings={listings} bookings={bookings} loading={loading} />}
+   157→        {hostTab === 'reservations' && <ReservationsTab bookings={bookings} loading={loading} onRefresh={refreshAll} />}
+   158→        {hostTab === 'inbox' && <InboxTab loading={loading} />}
+   159→        {hostTab === 'earnings' && <EarningsTab bookings={bookings} payouts={payouts} stats={stats} loading={loading} />}
+   160→        {hostTab === 'analytics' && <AnalyticsTab listings={listings} bookings={bookings} loading={loading} />}
+   161→        {hostTab === 'reviews' && <ReviewsTab bookings={bookings} loading={loading} />}
+   162→        {hostTab === 'cohosts' && <CoHostsTab listings={listings} />}
+   163→        {hostTab === 'create' && <CreateListingPlaceholder onCreateListing={() => setView('create-listing')} />}
+   164→      </main>
+   165→    </div>
+   166→  )
+   167→}
+   168→
+   169→// ============================================================
+   170→// HOST PROFILE CARD (sidebar)
+   171→// ============================================================
+   172→function HostProfileCard({ user }: { user: any }) {
+   173→  return (
+   174→    <div className="mb-2 flex items-center gap-3 border-b border-border p-3">
+   175→      <Avatar className="h-10 w-10">
+   176→        <AvatarImage src={user.avatarUrl || undefined} alt={user.name} />
+   177→        <AvatarFallback className="bg-navy text-white">
+   178→          {user.name?.split(' ').map((p: string) => p[0]).slice(0, 2).join('')}
+   179→        </AvatarFallback>
+   180→      </Avatar>
+   181→      <div className="min-w-0 flex-1">
+   182→        <p className="truncate text-sm font-semibold text-navy">{user.name}</p>
+   183→        <p className="truncate text-xs text-muted-foreground">Host</p>
+   184→      </div>
+   185→      {user.isSuperhost && (
+   186→        <span title="Superhost" className="grid h-6 w-6 place-items-center rounded-full bg-orange text-white">
+   187→          <Crown className="h-3.5 w-3.5" />
+   188→        </span>
+   189→      )}
+   190→    </div>
+   191→  )
+   192→}
+   193→
+   194→// ============================================================
+   195→// OVERVIEW TAB
+   196→// ============================================================
+   197→function OverviewTab({ listings, bookings, payouts, stats, loading, onGoToTab, onCreateListing }: any) {
+   198→  const { showToast } = useAppStore()
+   199→  const [notifications, setNotifications] = useState<any[]>([])
+   200→
+   201→  // Load recent notifications on mount (setState runs inside the .then callback,
+   202→  // so it never fires synchronously in the effect body).
+   203→  useEffect(() => {
+   204→    let cancelled = false
+   205→    fetchNotifications()
+   206→      .then(d => { if (!cancelled) setNotifications(d.notifications || []) })
+   207→      .catch(() => {})
+   208→    return () => { cancelled = true }
+   209→  }, [])
+   210→
+   211→  if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />
+   212→  if (!stats) {
+   213→    return <EmptyState icon={LayoutDashboard} title="No host data yet" subtitle="Create a listing to start earning." actionLabel="Create listing" onAction={onCreateListing} />
+   214→  }
+   215→
+   216→  const upcomingBookings = bookings
+   217→    .filter((b: any) => b.status === 'CONFIRMED' && new Date(b.checkIn) >= new Date())
+   218→    .sort((a: any, b: any) => new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime())
+   219→    .slice(0, 5)
+   220→
+   221→  const allReviews = bookings
+   222→    .flatMap((b: any) => (b.reviews || []).map((r: any) => ({ ...r, listing: b.listing, booking: b })))
+   223→    .filter((r: any) => r.authorId !== useAppStore.getState().user?.id)
+   224→    .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+   225→    .slice(0, 3)
+   226→
+   227→  const pendingCount = bookings.filter((b: any) => b.status === 'PENDING').length
+   228→
+   229→  return (
+   230→    <div className="space-y-6">
+   231→      <div className="flex flex-wrap items-end justify-between gap-3">
+   232→        <div>
+   233→          <h1 className="text-2xl font-bold text-navy">Host dashboard</h1>
+   234→          <p className="text-sm text-muted-foreground">Your performance, reservations, and earnings at a glance.</p>
+   235→        </div>
+   236→        <div className="flex gap-2">
+   237→          <Button variant="outline" onClick={() => onGoToTab('reservations')} className="rounded-full border-navy/20 text-navy">
+   238→            View reservations {pendingCount > 0 && <Badge variant="secondary" className="ml-1 bg-orange text-white">{pendingCount}</Badge>}
+   239→          </Button>
+   240→          <Button onClick={onCreateListing} className="rounded-full bg-orange text-white">
+   241→            <Plus className="h-4 w-4" /> Add listing
+   242→          </Button>
+   243→        </div>
+   244→      </div>
+   245→
+   246→      {/* KPI grid */}
+   247→      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   248→        <KpiCard icon={DollarSign} label="Total revenue" value={formatPrice(stats.grossRevenue)} hint="gross" />
+   249→        <KpiCard icon={Wallet} label="Net earnings" value={formatPrice(stats.netEarnings)} hint="paid out" />
+   250→        <KpiCard icon={Clock} label="Upcoming check-ins" value={String(stats.upcomingCheckIns)} hint="confirmed" />
+   251→        <KpiCard icon={BarChart3} label="Occupancy" value={`${stats.occupancyRate}%`} hint="last 30d" />
+   252→        <KpiCard icon={DollarSign} label="Avg nightly rate" value={formatPrice(stats.avgNightlyRate)} hint="across listings" />
+   253→        <KpiCard icon={Home} label="Total listings" value={String(stats.totalListings)} hint="active" />
+   254→        <KpiCard icon={Check} label="Total bookings" value={String(stats.totalBookings)} hint="all time" />
+   255→        <KpiCard icon={Wallet} label="Pending payouts" value={formatPrice(stats.pendingPayouts)} hint="processing" />
+   256→      </div>
+   257→
+   258→      {/* Quick actions */}
+   259→      <Card>
+   260→        <CardHeader><CardTitle className="text-navy">Quick actions</CardTitle></CardHeader>
+   261→        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+   262→          <QuickAction icon={Plus} label="Add listing" onClick={onCreateListing} />
+   263→          <QuickAction icon={Clock} label="View reservations" onClick={() => onGoToTab('reservations')} />
+   264→          <QuickAction icon={Inbox} label="Open inbox" onClick={() => onGoToTab('inbox')} />
+   265→          <QuickAction icon={Wallet} label="Track earnings" onClick={() => onGoToTab('earnings')} />
+   266→        </CardContent>
+   267→      </Card>
+   268→
+   269→      {/* Recent reservations + reviews + notifications */}
+   270→      <div className="grid gap-4 lg:grid-cols-3">
+   271→        <Card>
+   272→          <CardHeader>
+   273→            <CardTitle className="flex items-center justify-between text-navy">
+   274→              <span className="flex items-center gap-2"><Clock className="h-5 w-5 text-orange" /> Recent reservations</span>
+   275→              <Button variant="ghost" size="sm" onClick={() => onGoToTab('reservations')} className="text-orange">View all <ArrowRight className="h-3 w-3" /></Button>
+   276→            </CardTitle>
+   277→          </CardHeader>
+   278→          <CardContent className="space-y-3">
+   279→            {upcomingBookings.length === 0 ? (
+   280→              <p className="py-6 text-center text-sm text-muted-foreground">No upcoming check-ins.</p>
+   281→            ) : upcomingBookings.map((b: any) => (
+   282→              <div key={b.id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-peach-light/40">
+   283→                <Avatar className="h-8 w-8">
+   284→                  <AvatarImage src={b.guest?.avatarUrl || undefined} alt={b.guest?.name} />
+   285→                  <AvatarFallback className="bg-peach text-navy text-xs">{b.guest?.name?.split(' ').map((p: string) => p[0]).slice(0, 2).join('')}</AvatarFallback>
+   286→                </Avatar>
+   287→                <div className="min-w-0 flex-1">
+   288→                  <p className="truncate text-sm font-medium text-navy">{b.guest?.name}</p>
+   289→                  <p className="truncate text-xs text-muted-foreground">{b.listing?.title}</p>
+   290→                </div>
+   291→                <div className="text-right">
+   292→                  <p className="text-xs font-medium text-navy">{formatDate(b.checkIn, { month: 'short', day: 'numeric' })}</p>
+   293→                  <p className="text-[10px] text-muted-foreground">{b.nights}n · {formatPrice(b.totalAmount)}</p>
+   294→                </div>
+   295→              </div>
+   296→            ))}
+   297→          </CardContent>
+   298→        </Card>
+   299→
+   300→        <Card>
+   301→          <CardHeader>
+   302→            <CardTitle className="flex items-center justify-between text-navy">
+   303→              <span className="flex items-center gap-2"><Star className="h-5 w-5 text-orange" /> Recent reviews</span>
+   304→              <Button variant="ghost" size="sm" onClick={() => onGoToTab('reviews')} className="text-orange">View all <ArrowRight className="h-3 w-3" /></Button>
+   305→            </CardTitle>
+   306→          </CardHeader>
+   307→          <CardContent className="space-y-3">
+   308→            {allReviews.length === 0 ? (
+   309→              <p className="py-6 text-center text-sm text-muted-foreground">No reviews yet.</p>
+   310→            ) : allReviews.map((r: any) => (
+   311→              <div key={r.id} className="flex items-start gap-3 rounded-lg p-2 hover:bg-peach-light/40">
+   312→                <Avatar className="h-8 w-8">
+   313→                  <AvatarImage src={r.author?.avatarUrl || undefined} alt={r.author?.name} />
+   314→                  <AvatarFallback className="bg-peach text-navy text-xs">{r.author?.name?.split(' ').map((p: string) => p[0]).slice(0, 2).join('')}</AvatarFallback>
+   315→                </Avatar>
+   316→                <div className="min-w-0 flex-1">
+   317→                  <div className="flex items-center gap-2">
+   318→                    <p className="truncate text-sm font-medium text-navy">{r.author?.name}</p>
+   319→                    <div className="flex items-center gap-0.5">
+   320→                      {Array.from({ length: 5 }).map((_, i) => (
+   321→                        <Star key={i} className={`h-3 w-3 ${i < r.rating ? 'fill-orange text-orange' : 'text-muted-foreground/30'}`} />
+   322→                      ))}
+   323→                    </div>
+   324→                  </div>
+   325→                  <p className="stayora-line-clamp-2 text-xs text-muted-foreground">{r.body || 'No written review.'}</p>
+   326→                  <p className="mt-0.5 text-[10px] text-muted-foreground">{formatRelativeDate(r.createdAt)} · {r.listing?.title}</p>
+   327→                </div>
+   328→              </div>
+   329→            ))}
+   330→          </CardContent>
+   331→        </Card>
+   332→
+   333→        <Card>
+   334→          <CardHeader>
+   335→            <CardTitle className="flex items-center gap-2 text-navy"><Inbox className="h-5 w-5 text-orange" /> Recent notifications</CardTitle>
+   336→          </CardHeader>
+   337→          <CardContent className="space-y-3">
+   338→            {notifications.length === 0 ? (
+   339→              <p className="py-6 text-center text-sm text-muted-foreground">No notifications yet.</p>
+   340→            ) : notifications.slice(0, 4).map((n: any) => (
+   341→              <div key={n.id} className={`flex items-start gap-2 rounded-lg p-2 ${!n.isRead ? 'bg-peach-light/60' : ''}`}>
+   342→                <div className="flex-1">
+   343→                  <p className={`text-sm ${!n.isRead ? 'font-semibold text-navy' : 'font-medium text-navy/80'}`}>{n.title}</p>
+   344→                  {n.body && <p className="text-xs text-muted-foreground">{n.body}</p>}
+   345→                  <p className="mt-0.5 text-[10px] text-muted-foreground">{formatRelativeDate(n.createdAt)}</p>
+   346→                </div>
+   347→                {!n.isRead && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-orange" />}
+   348→              </div>
+   349→            ))}
+   350→          </CardContent>
+   351→        </Card>
+   352→      </div>
+   353→    </div>
+   354→  )
+   355→}
+   356→
+   357→function KpiCard({ icon: Icon, label, value, hint }: any) {
+   358→  return (
+   359→    <div className="rounded-2xl border border-border bg-white p-4 transition hover:shadow-md">
+   360→      <div className="mb-2 flex items-center justify-between">
+   361→        <div className="grid h-9 w-9 place-items-center rounded-lg bg-peach-light">
+   362→          <Icon className="h-4 w-4 text-navy" />
+   363→        </div>
+   364→        {hint && <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{hint}</span>}
+   365→      </div>
+   366→      <p className="text-2xl font-bold text-navy">{value}</p>
+   367→      <p className="text-xs text-muted-foreground">{label}</p>
+   368→    </div>
+   369→  )
+   370→}
+   371→
+   372→function QuickAction({ icon: Icon, label, onClick }: any) {
+   373→  return (
+   374→    <button onClick={onClick} className="flex items-center gap-3 rounded-xl border border-border bg-white p-3 text-left transition hover:border-orange/40 hover:shadow-sm">
+   375→      <span className="grid h-9 w-9 place-items-center rounded-lg bg-orange/10 text-orange">
+   376→        <Icon className="h-4 w-4" />
+   377→      </span>
+   378→      <span className="flex-1 text-sm font-medium text-navy">{label}</span>
+   379→      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+   380→    </button>
+   381→  )
+   382→}
+   383→
+   384→function EmptyState({ icon: Icon, title, subtitle, actionLabel, onAction }: any) {
+   385→  return (
+   386→    <Card>
+   387→      <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+   388→        <Icon className="h-10 w-10 text-muted-foreground" />
+   389→        <h3 className="font-semibold text-navy">{title}</h3>
+   390→        <p className="max-w-sm text-sm text-muted-foreground">{subtitle}</p>
+   391→        {actionLabel && (
+   392→          <Button onClick={onAction} className="mt-2 rounded-full bg-orange text-white">
+   393→            <Plus className="h-4 w-4" /> {actionLabel}
+   394→          </Button>
+   395→        )}
+   396→      </CardContent>
+   397→    </Card>
+   398→  )
+   399→}
+   400→
+   401→// ============================================================
+   402→// LISTINGS TAB
+   403→// ============================================================
+   404→function ListingsTab({ listings, loading, onRefresh, onCreateListing }: any) {
+   405→  const { showToast } = useAppStore()
+   406→  const [filter, setFilter] = useState<'ALL' | 'DRAFT' | 'PUBLISHED' | 'PAUSED'>('ALL')
+   407→  const [toggling, setToggling] = useState<string | null>(null)
+   408→  const [duplicating, setDuplicating] = useState<string | null>(null)
+   409→
+   410→  const filtered = filter === 'ALL' ? listings : listings.filter((l: any) => l.status === filter)
+   411→
+   412→  const handleToggleStatus = async (listing: any) => {
+   413→    const next = listing.status === 'PUBLISHED' ? 'PAUSED' : 'PUBLISHED'
+   414→    setToggling(listing.id)
+   415→    try {
+   416→      await updateListingStatus(listing.id, next)
+   417→      showToast(
+   418→        next === 'PUBLISHED' ? 'Listing published' : 'Listing paused',
+   419→        next === 'PUBLISHED' ? 'Your listing is now live and bookable.' : 'Bookings are paused for this listing.',
+   420→        'success',
+   421→      )
+   422→      onRefresh()
+   423→    } catch (e: any) {
+   424→      showToast('Could not update status', e?.message, 'error')
+   425→    } finally {
+   426→      setToggling(null)
+   427→    }
+   428→  }
+   429→
+   430→  const handleDuplicate = async (listing: any) => {
+   431→    setDuplicating(listing.id)
+   432→    try {
+   433→      await createListing({
+   434→        title: `${listing.title} (copy)`,
+   435→        description: listing.description,
+   436→        category: listing.category,
+   437→        roomType: listing.roomType,
+   438→        country: listing.country,
+   439→        city: listing.city,
+   440→        neighborhood: listing.neighborhood,
+   441→        maxGuests: listing.maxGuests,
+   442→        bedrooms: listing.bedrooms,
+   443→        beds: listing.beds,
+   444→        bathrooms: listing.bathrooms,
+   445→        basePrice: listing.basePrice,
+   446→        currency: listing.currency,
+   447→        cleaningFee: listing.cleaningFee,
+   448→        extraGuestFee: listing.extraGuestFee,
+   449→        weeklyDiscountPct: listing.weeklyDiscountPct,
+   450→        monthlyDiscountPct: listing.monthlyDiscountPct,
+   451→        minNights: listing.minNights,
+   452→        maxNights: listing.maxNights,
+   453→        checkInTime: listing.checkInTime,
+   454→        checkOutTime: listing.checkOutTime,
+   455→        instantBook: listing.instantBook,
+   456→        cancellationPolicy: listing.cancellationPolicy,
+   457→        allowsPets: listing.allowsPets,
+   458→        allowsSmoking: listing.allowsSmoking,
+   459→        allowsParties: listing.allowsParties,
+   460→        amenities: listing.amenities,
+   461→        status: 'DRAFT',
+   462→      })
+   463→      showToast('Listing duplicated', 'A draft copy has been created.', 'success')
+   464→      onRefresh()
+   465→    } catch (e: any) {
+   466→      showToast('Could not duplicate listing', e?.message, 'error')
+   467→    } finally {
+   468→      setDuplicating(null)
+   469→    }
+   470→  }
+   471→
+   472→  if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />
+   473→
+   474→  return (
+   475→    <div className="space-y-6">
+   476→      <div className="flex flex-wrap items-end justify-between gap-3">
+   477→        <div>
+   478→          <h1 className="text-2xl font-bold text-navy">Your listings</h1>
+   479→          <p className="text-sm text-muted-foreground">Manage availability, pricing, and live status for each property.</p>
+   480→        </div>
+   481→        <Button onClick={onCreateListing} className="rounded-full bg-orange text-white">
+   482→          <Plus className="h-4 w-4" /> Add new listing
+   483→        </Button>
+   484→      </div>
+   485→
+   486→      <div className="flex flex-wrap items-center gap-2">
+   487→        {(['ALL', 'PUBLISHED', 'DRAFT', 'PAUSED'] as const).map(s => (
+   488→          <button
+   489→            key={s}
+   490→            onClick={() => setFilter(s)}
+   491→            className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+   492→              filter === s ? 'bg-navy text-white' : 'border border-border bg-white text-navy/70 hover:bg-peach-light/60'
+   493→            }`}
+   494→          >
+   495→            {s === 'ALL' ? `All (${listings.length})` : `${s.charAt(0) + s.slice(1).toLowerCase()} (${listings.filter((l: any) => l.status === s).length})`}
+   496→          </button>
+   497→        ))}
+   498→      </div>
+   499→
+   500→      {filtered.length === 0 ? (
+   501→        <EmptyState
+   502→          icon={Home}
+   503→          title="No listings here yet"
+   504→          subtitle={filter === 'ALL' ? 'Create your first listing to start welcoming guests.' : `You have no ${filter.toLowerCase()} listings.`}
+   505→          actionLabel={filter === 'ALL' ? 'Create listing' : undefined}
+   506→          onAction={onCreateListing}
+   507→        />
+   508→      ) : (
+   509→        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+   510→          {filtered.map((l: any) => (
+   511→            <ListingCard
+   512→              key={l.id}
+   513→              listing={l}
+   514→              toggling={toggling === l.id}
+   515→              duplicating={duplicating === l.id}
+   516→              onToggle={() => handleToggleStatus(l)}
+   517→              onDuplicate={() => handleDuplicate(l)}
+   518→              onEdit={() => showToast('Edit coming soon', 'The listing editor is not enabled in this demo.', 'default')}
+   519→              onPreview={() => showToast('Preview coming soon', 'Preview mode is read-only in this demo.', 'default')}
+   520→            />
+   521→          ))}
+   522→        </div>
+   523→      )}
+   524→    </div>
+   525→  )
+   526→}
+   527→
+   528→function ListingCard({ listing, toggling, duplicating, onToggle, onDuplicate, onEdit, onPreview }: any) {
+   529→  const cover = listing.photos?.[0]?.url || listing.coverImage
+   530→  const statusVariant = listing.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' : listing.status === 'DRAFT' ? 'bg-muted text-muted-foreground' : 'bg-orange-100 text-orange-700'
+   531→
+   532→  return (
+   533→    <Card className="overflow-hidden transition hover:shadow-md">
+   534→      <div className="relative aspect-[4/3] w-full bg-muted">
+   535→        {cover ? (
+   536→          <img src={cover} alt={listing.title} className="h-full w-full object-cover" loading="lazy" />
+   537→        ) : (
+   538→          <div className="grid h-full place-items-center text-muted-foreground"><Home className="h-8 w-8" /></div>
+   539→        )}
+   540→        <div className="absolute left-2 top-2 flex gap-1.5">
+   541→          <Badge variant="secondary" className={statusVariant}>{listing.status}</Badge>
+   542→          {listing.instantBook && (
+   543→            <Badge variant="secondary" className="bg-orange text-white"><Zap className="h-3 w-3" /> Instant</Badge>
+   544→          )}
+   545→        </div>
+   546→      </div>
+   547→      <CardContent className="p-4">
+   548→        <h3 className="truncate font-semibold text-navy">{listing.title}</h3>
+   549→        <p className="mt-0.5 text-xs text-muted-foreground">
+   550→          {listing.city}, {listing.country} · {CATEGORY_LABELS[listing.category] || listing.category}
+   551→        </p>
+   552→        <p className="mt-0.5 text-[10px] text-muted-foreground">
+   553→          Cancellation: {CANCELLATION_LABELS[listing.cancellationPolicy] || listing.cancellationPolicy}
+   554→        </p>
+   555→
+   556→        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+   557→          <span className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5 text-navy" /> {formatPrice(listing.basePrice)}</span>
+   558→          <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5 text-orange" /> {listing.rating?.toFixed(1) || '—'} ({listing.reviewCount})</span>
+   559→          <span className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" /> {formatNumber(listing.views || 0)}</span>
+   560→          <span className="flex items-center gap-1"><Heart className="h-3.5 w-3.5" /> {formatNumber(listing.wishlistSaves || 0)}</span>
+   561→        </div>
+   562→
+   563→        <div className="mt-4 flex items-center justify-between gap-2">
+   564→          <Button
+   565→            size="sm"
+   566→            onClick={onToggle}
+   567→            disabled={toggling}
+   568→            className={`rounded-full ${listing.status === 'PUBLISHED' ? 'bg-navy text-white' : 'bg-orange text-white'}`}
+   569→          >
+   570→            {toggling ? 'Updating…' : listing.status === 'PUBLISHED' ? 'Pause' : 'Publish'}
+   571→          </Button>
+   572→
+   573→          <div className="flex items-center gap-1">
+   574→            <IconAction icon={Edit3} label="Edit" onClick={onEdit} />
+   575→            <IconAction icon={EyeIcon} label="Preview" onClick={onPreview} />
+   576→            <DropdownMenu>
+   577→              <DropdownMenuTrigger asChild>
+   578→                <button className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition hover:bg-peach-light/60 hover:text-navy" aria-label="More actions">
+   579→                  <MoreVertical className="h-4 w-4" />
+   580→                </button>
+   581→              </DropdownMenuTrigger>
+   582→              <DropdownMenuContent align="end">
+   583→                <DropdownMenuItem onClick={onDuplicate} disabled={duplicating}>
+   584→                  {duplicating ? 'Duplicating…' : 'Duplicate listing'}
+   585→                </DropdownMenuItem>
+   586→                <DropdownMenuSeparator />
+   587→                <DropdownMenuItem onClick={onEdit}>Edit details</DropdownMenuItem>
+   588→                <DropdownMenuItem onClick={onPreview}>Preview as guest</DropdownMenuItem>
+   589→                <DropdownMenuSeparator />
+   590→                <DropdownMenuItem className="text-destructive">Archive</DropdownMenuItem>
+   591→              </DropdownMenuContent>
+   592→            </DropdownMenu>
+   593→          </div>
+   594→        </div>
+   595→      </CardContent>
+   596→    </Card>
+   597→  )
+   598→}
+   599→
+   600→function IconAction({ icon: Icon, label, onClick }: any) {
+   601→  return (
+   602→    <button
+   603→      onClick={onClick}
+   604→      title={label}
+   605→      aria-label={label}
+   606→      className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition hover:bg-peach-light/60 hover:text-navy"
+   607→    >
+   608→      <Icon className="h-4 w-4" />
+   609→    </button>
+   610→  )
+   611→}
+   612→
+   613→// ============================================================
+   614→// CALENDAR TAB
+   615→// ============================================================
+   616→function CalendarTab({ listings, bookings, loading }: any) {
+   617→  const { showToast } = useAppStore()
+   618→  const [selectedListingId, setSelectedListingId] = useState<string>('')
+   619→  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+   620→  const [blocked, setBlocked] = useState<Set<string>>(new Set())
+   621→
+   622→  // Derive the effective listing without a setState-in-effect (avoids cascading renders).
+   623→  const effectiveListingId = selectedListingId || (listings[0]?.id ?? '')
+   624→
+   625→  if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />
+   626→
+   627→  if (listings.length === 0) {
+   628→    return <EmptyState icon={CalendarIcon} title="No listings to schedule" subtitle="Create a listing to manage its availability calendar." />
+   629→  }
+   630→
+   631→  const selectedListing = listings.find((l: any) => l.id === effectiveListingId) || listings[0]
+   632→
+   633→  // Compute reserved date set for the selected listing
+   634→  const reservedSet = new Set<string>()
+   635→  for (const b of bookings) {
+   636→    if (b.listingId !== selectedListing.id) continue
+   637→    if (b.status === 'CANCELLED') continue
+   638→    const start = new Date(b.checkIn)
+   639→    const end = new Date(b.checkOut)
+   640→    const cur = new Date(start)
+   641→    while (cur < end) {
+   642→      reservedSet.add(cur.toISOString().split('T')[0])
+   643→      cur.setDate(cur.getDate() + 1)
+   644→    }
+   645→  }
+   646→  // Merge blocked (host-blocked) into reserved view
+   647→  const allBlocked = new Set<string>([...reservedSet, ...blocked])
+   648→
+   649→  const dayStatus = (date: Date): 'available' | 'reserved' | 'blocked' => {
+   650→    const key = date.toISOString().split('T')[0]
+   651→    if (reservedSet.has(key)) return 'reserved'
+   652→    if (blocked.has(key)) return 'blocked'
+   653→    return 'available'
+   654→  }
+   655→
+   656→  const toggleBlock = () => {
+   657→    if (!selectedDate) {
+   658→      showToast('Pick a date first', undefined, 'error')
+   659→      return
+   660→    }
+   661→    const key = selectedDate.toISOString().split('T')[0]
+   662→    const next = new Set(blocked)
+   663→    if (next.has(key)) {
+   664→      next.delete(key)
+   665→      showToast('Date unblocked', 'Guests can now book this date.', 'success')
+   666→    } else {
+   667→      next.add(key)
+   668→      showToast('Date blocked', 'Guests cannot book this date.', 'default')
+   669→    }
+   670→    setBlocked(next)
+   671→  }
+   672→
+   673→  const selectedStatus = selectedDate ? dayStatus(selectedDate) : 'available'
+   674→
+   675→  return (
+   676→    <div className="space-y-6">
+   677→      <div>
+   678→        <h1 className="text-2xl font-bold text-navy">Calendar</h1>
+   679→        <p className="text-sm text-muted-foreground">Manage availability and block dates for individual listings.</p>
+   680→      </div>
+   681→
+   682→      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+   683→        <Card>
+   684→          <CardHeader>
+   685→            <CardTitle className="flex items-center justify-between text-navy">
+   686→              <span className="flex items-center gap-2"><CalendarIcon className="h-5 w-5 text-orange" /> Availability</span>
+   687→              <Select value={effectiveListingId} onValueChange={setSelectedListingId}>
+   688→                <SelectTrigger className="h-8 w-[220px] rounded-lg"><SelectValue placeholder="Select listing" /></SelectTrigger>
+   689→                <SelectContent>
+   690→                  {listings.map((l: any) => (
+   691→                    <SelectItem key={l.id} value={l.id}>{l.title}</SelectItem>
+   692→                  ))}
+   693→                </SelectContent>
+   694→              </Select>
+   695→            </CardTitle>
+   696→          </CardHeader>
+   697→          <CardContent className="flex justify-center">
+   698→            <Calendar
+   699→              mode="single"
+   700→              selected={selectedDate}
+   701→              onSelect={setSelectedDate}
+   702→              className="rounded-lg"
+   703→              modifiers={{
+   704→                reserved: (date: Date) => {
+   705→                  const key = date.toISOString().split('T')[0]
+   706→                  return reservedSet.has(key)
+   707→                },
+   708→                blocked: (date: Date) => {
+   709→                  const key = date.toISOString().split('T')[0]
+   710→                  return blocked.has(key)
+   711→                },
+   712→              }}
+   713→              modifiersStyles={{
+   714→                reserved: { backgroundColor: '#1a2c4f', color: '#ffffff', borderRadius: '6px' },
+   715→                blocked: { backgroundColor: '#fce8d8', color: '#1a2c4f', textDecoration: 'line-through', borderRadius: '6px' },
+   716→              }}
+   717→            />
+   718→          </CardContent>
+   719→        </Card>
+   720→
+   721→        <div className="space-y-4">
+   722→          <Card>
+   723→            <CardHeader><CardTitle className="text-navy">Selected date</CardTitle></CardHeader>
+   724→            <CardContent className="space-y-3 text-sm">
+   725→              {selectedDate ? (
+   726→                <>
+   727→                  <div>
+   728→                    <p className="text-xs text-muted-foreground">Date</p>
+   729→                    <p className="font-semibold text-navy">{formatDate(selectedDate, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+   730→                  </div>
+   731→                  <div>
+   732→                    <p className="text-xs text-muted-foreground">Status</p>
+   733→                    <Badge variant="secondary" className={
+   734→                      selectedStatus === 'reserved' ? 'bg-navy text-white' :
+   735→                      selectedStatus === 'blocked' ? 'bg-orange text-white' :
+   736→                      'bg-green-100 text-green-700'
+   737→                    }>{selectedStatus}</Badge>
+   738→                  </div>
+   739→                  <Button onClick={toggleBlock} className="w-full rounded-full bg-orange text-white">
+   740→                    {selectedStatus === 'blocked' ? 'Unblock date' : 'Block date'}
+   741→                  </Button>
+   742→                  <p className="text-[10px] text-muted-foreground">Block dates to prevent new bookings (e.g., for personal use or maintenance).</p>
+   743→                </>
+   744→              ) : (
+   745→                <p className="text-muted-foreground">Select a date on the calendar.</p>
+   746→              )}
+   747→            </CardContent>
+   748→          </Card>
+   749→
+   750→          <Card>
+   751→            <CardHeader><CardTitle className="text-navy">Legend</CardTitle></CardHeader>
+   752→            <CardContent className="space-y-2 text-sm">
+   753→              <LegendRow color="bg-green-500" label="Available" />
+   754→              <LegendRow color="bg-navy" label="Reserved / booked" />
+   755→              <LegendRow color="bg-peach-light" label="Blocked by host" />
+   756→            </CardContent>
+   757→          </Card>
+   758→        </div>
+   759→      </div>
+   760→    </div>
+   761→  )
+   762→}
+   763→
+   764→function LegendRow({ color, label }: { color: string; label: string }) {
+   765→  return (
+   766→    <div className="flex items-center gap-2">
+   767→      <span className={`h-4 w-4 rounded ${color}`} />
+   768→      <span className="text-navy/80">{label}</span>
+   769→    </div>
+   770→  )
+   771→}
+   772→
+   773→// ============================================================
+   774→// RESERVATIONS TAB
+   775→// ============================================================
+   776→function ReservationsTab({ bookings, loading, onRefresh }: any) {
+   777→  const { showToast } = useAppStore()
+   778→  const [acting, setActing] = useState<string | null>(null)
+   779→
+   780→  const counts = {
+   781→    all: bookings.length,
+   782→    pending: bookings.filter((b: any) => b.status === 'PENDING').length,
+   783→    confirmed: bookings.filter((b: any) => b.status === 'CONFIRMED').length,
+   784→    completed: bookings.filter((b: any) => b.status === 'COMPLETED').length,
+   785→    cancelled: bookings.filter((b: any) => b.status === 'CANCELLED').length,
+   786→  }
+   787→
+   788→  const handleAccept = async (bookingId: string) => {
+   789→    setActing(bookingId)
+   790→    try {
+   791→      // No backend endpoint for booking-status changes in this demo
+   792→      await new Promise(r => setTimeout(r, 350))
+   793→      showToast('Reservation accepted', 'The guest has been notified.', 'success')
+   794→      onRefresh()
+   795→    } finally {
+   796→      setActing(null)
+   797→    }
+   798→  }
+   799→
+   800→  const handleDecline = async (bookingId: string) => {
+   801→    setActing(bookingId)
+   802→    try {
+   803→      await new Promise(r => setTimeout(r, 350))
+   804→      showToast('Reservation declined', 'The guest has been notified.', 'default')
+   805→      onRefresh()
+   806→    } finally {
+   807→      setActing(null)
+   808→    }
+   809→  }
+   810→
+   811→  if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />
+   812→
+   813→  return (
+   814→    <div className="space-y-6">
+   815→      <div>
+   816→        <h1 className="text-2xl font-bold text-navy">Reservations</h1>
+   817→        <p className="text-sm text-muted-foreground">Review booking requests and manage your guest roster.</p>
+   818→      </div>
+   819→
+   820→      {bookings.length === 0 ? (
+   821→        <EmptyState icon={Clock} title="No reservations yet" subtitle="Once guests book your listings, their reservations will appear here." />
+   822→      ) : (
+   823→        <Tabs defaultValue="all">
+   824→          <TabsList className="flex-wrap">
+   825→            <TabsTrigger value="all">All ({counts.all})</TabsTrigger>
+   826→            <TabsTrigger value="pending">Pending ({counts.pending})</TabsTrigger>
+   827→            <TabsTrigger value="confirmed">Confirmed ({counts.confirmed})</TabsTrigger>
+   828→            <TabsTrigger value="completed">Completed ({counts.completed})</TabsTrigger>
+   829→            <TabsTrigger value="cancelled">Cancelled ({counts.cancelled})</TabsTrigger>
+   830→          </TabsList>
+   831→
+   832→          <TabsContent value="all"><ReservationsTable bookings={bookings} acting={acting} onAccept={handleAccept} onDecline={handleDecline} /></TabsContent>
+   833→          <TabsContent value="pending"><ReservationsTable bookings={bookings.filter((b: any) => b.status === 'PENDING')} acting={acting} onAccept={handleAccept} onDecline={handleDecline} /></TabsContent>
+   834→          <TabsContent value="confirmed"><ReservationsTable bookings={bookings.filter((b: any) => b.status === 'CONFIRMED')} acting={acting} onAccept={handleAccept} onDecline={handleDecline} /></TabsContent>
+   835→          <TabsContent value="completed"><ReservationsTable bookings={bookings.filter((b: any) => b.status === 'COMPLETED')} acting={acting} onAccept={handleAccept} onDecline={handleDecline} /></TabsContent>
+   836→          <TabsContent value="cancelled"><ReservationsTable bookings={bookings.filter((b: any) => b.status === 'CANCELLED')} acting={acting} onAccept={handleAccept} onDecline={handleDecline} /></TabsContent>
+   837→        </Tabs>
+   838→      )}
+   839→    </div>
+   840→  )
+   841→}
+   842→
+   843→function ReservationsTable({ bookings, acting, onAccept, onDecline }: any) {
+   844→  if (bookings.length === 0) {
+   845→    return <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">No reservations in this category.</CardContent></Card>
+   846→  }
+   847→  return (
+   848→    <Card>
+   849→      <CardContent className="p-0">
+   850→        <div className="overflow-x-auto">
+   851→          <Table>
+   852→            <TableHeader>
+   853→              <TableRow>
+   854→                <TableHead>Guest</TableHead>
+   855→                <TableHead>Listing</TableHead>
+   856→                <TableHead>Check-in</TableHead>
+   857→                <TableHead>Check-out</TableHead>
+   858→                <TableHead>Nights</TableHead>
+   859→                <TableHead>Total</TableHead>
+   860→                <TableHead>Status</TableHead>
+   861→                <TableHead className="text-right">Actions</TableHead>
+   862→              </TableRow>
+   863→            </TableHeader>
+   864→            <TableBody>
+   865→              {bookings.map((b: any) => (
+   866→                <TableRow key={b.id}>
+   867→                  <TableCell>
+   868→                    <div className="flex items-center gap-2">
+   869→                      <Avatar className="h-7 w-7">
+   870→                        <AvatarImage src={b.guest?.avatarUrl || undefined} alt={b.guest?.name} />
+   871→                        <AvatarFallback className="bg-peach text-navy text-[10px]">{b.guest?.name?.split(' ').map((p: string) => p[0]).slice(0, 2).join('')}</AvatarFallback>
+   872→                      </Avatar>
+   873→                      <div className="min-w-0">
+   874→                        <p className="truncate text-sm font-medium text-navy">{b.guest?.name}</p>
+   875→                        <p className="text-[10px] text-muted-foreground">{b.reference}</p>
+   876→                      </div>
+   877→                    </div>
+   878→                  </TableCell>
+   879→                  <TableCell className="max-w-[180px] truncate text-sm text-navy">{b.listing?.title}</TableCell>
+   880→                  <TableCell className="text-sm text-navy">{formatDate(b.checkIn, { month: 'short', day: 'numeric' })}</TableCell>
+   881→                  <TableCell className="text-sm text-navy">{formatDate(b.checkOut, { month: 'short', day: 'numeric' })}</TableCell>
+   882→                  <TableCell className="text-sm text-muted-foreground">{b.nights}</TableCell>
+   883→                  <TableCell className="text-sm font-semibold text-navy">{formatPrice(b.totalAmount)}</TableCell>
+   884→                  <TableCell>
+   885→                    <StatusBadge status={b.status} />
+   886→                  </TableCell>
+   887→                  <TableCell className="text-right">
+   888→                    {b.status === 'PENDING' ? (
+   889→                      <div className="flex justify-end gap-1.5">
+   890→                        <Button size="sm" onClick={() => onAccept(b.id)} disabled={acting === b.id} className="rounded-full bg-navy text-white">
+   891→                          <Check className="h-3 w-3" /> Accept
+   892→                        </Button>
+   893→                        <Button size="sm" variant="outline" onClick={() => onDecline(b.id)} disabled={acting === b.id} className="rounded-full">
+   894→                          <X className="h-3 w-3" /> Decline
+   895→                        </Button>
+   896→                      </div>
+   897→                    ) : (
+   898→                      <span className="text-[10px] text-muted-foreground">—</span>
+   899→                    )}
+   900→                  </TableCell>
+   901→                </TableRow>
+   902→              ))}
+   903→            </TableBody>
+   904→          </Table>
+   905→        </div>
+   906→      </CardContent>
+   907→    </Card>
+   908→  )
+   909→}
+   910→
+   911→function StatusBadge({ status }: { status: string }) {
+   912→  const map: Record<string, string> = {
+   913→    PENDING: 'bg-orange-100 text-orange-700',
+   914→    CONFIRMED: 'bg-green-100 text-green-700',
+   915→    COMPLETED: 'bg-navy/10 text-navy',
+   916→    CANCELLED: 'bg-destructive/10 text-destructive',
+   917→  }
+   918→  return <Badge variant="secondary" className={map[status] || 'bg-muted text-muted-foreground'}>{status}</Badge>
+   919→}
+   920→
+   921→// ============================================================
+   922→// INBOX TAB
+   923→// ============================================================
+   924→function InboxTab({ loading }: any) {
+   925→  const { user, showToast } = useAppStore()
+   926→  const [conversations, setConversations] = useState<any[]>([])
+   927→  const [activeConv, setActiveConv] = useState<string | null>(null)
+   928→  const [messages, setMessages] = useState<any[]>([])
+   929→  const [input, setInput] = useState('')
+   930→  const [sending, setSending] = useState(false)
+   931→  const [loadingMsgs, setLoadingMsgs] = useState(false)
+   932→  const [convLoading, setConvLoading] = useState(true)
+   933→
+   934→  useEffect(() => {
+   935→    let cancelled = false
+   936→    setConvLoading(loading)
+   937→    fetchConversations()
+   938→      .then(d => { if (!cancelled) setConversations(d.conversations || []) })
+   939→      .catch(() => {})
+   940→      .finally(() => { if (!cancelled) setConvLoading(false) })
+   941→    return () => { cancelled = true }
+   942→  }, [loading, user?.id])
+   943→
+   944→  // Poll active conversation messages every 10s
+   945→  useEffect(() => {
+   946→    if (!activeConv) return
+   947→    let cancelled = false
+   948→    const load = () => {
+   949→      setLoadingMsgs(true)
+   950→      fetchMessages(activeConv)
+   951→        .then(d => {
+   952→          if (cancelled) return
+   953→          setMessages(d.messages || [])
+   954→          markRead(activeConv).then(() => {
+   955→            // refresh conversation list unread state
+   956→            fetchConversations().then(d2 => { if (!cancelled) setConversations(d2.conversations || []) }).catch(() => {})
+   957→          }).catch(() => {})
+   958→        })
+   959→        .catch(() => {})
+   960→        .finally(() => { if (!cancelled) setLoadingMsgs(false) })
+   961→    }
+   962→    load()
+   963→    const timer = setInterval(load, 10000)
+   964→    return () => { cancelled = true; clearInterval(timer) }
+   965→  }, [activeConv])
+   966→
+   967→  const send = async () => {
+   968→    if (!input.trim() || !activeConv) return
+   969→    setSending(true)
+   970→    try {
+   971→      const r = await sendMessage({ conversationId: activeConv, body: input })
+   972→      setMessages(m => [...m, r.message])
+   973→      setInput('')
+   974→    } catch (e: any) {
+   975→      showToast('Could not send message', e?.message, 'error')
+   976→    } finally {
+   977→      setSending(false)
+   978→    }
+   979→  }
+   980→
+   981→  if (convLoading) return <Skeleton className="h-96 w-full rounded-2xl" />
+   982→
+   983→  return (
+   984→    <div>
+   985→      <div className="mb-4">
+   986→        <h1 className="text-2xl font-bold text-navy">Inbox</h1>
+   987→        <p className="text-sm text-muted-foreground">Messages from guests and Stayora support. Auto-refreshes every 10s.</p>
+   988→      </div>
+   989→
+   990→      <div className="grid gap-4 md:grid-cols-[300px_1fr]">
+   991→        {/* Conversations list */}
+   992→        <div className="rounded-2xl border border-border bg-white overflow-hidden">
+   993→          <div className="border-b border-border p-3">
+   994→            <p className="text-sm font-semibold text-navy">{conversations.length} conversation{conversations.length === 1 ? '' : 's'}</p>
+   995→          </div>
+   996→          <div className="max-h-[60vh] overflow-y-auto stayora-scroll">
+   997→            {conversations.length === 0 ? (
+   998→              <p className="p-4 text-center text-sm text-muted-foreground">No conversations yet.</p>
+   999→            ) : conversations.map((c: any) => {
+  1000→              const other = c.userAId === user?.id ? c.userB : c.userA
+  1001→              const last = c.messages?.[0]
+  1002→              const isUnread = last && last.senderId !== user?.id && !last.isRead
+  1003→              return (
+  1004→                <button
+  1005→                  key={c.id}
+  1006→                  onClick={() => setActiveConv(c.id)}
+  1007→                  className={`flex w-full items-start gap-3 border-b border-border p-3 text-left transition hover:bg-peach-light/50 ${activeConv === c.id ? 'bg-peach-light' : ''}`}
+  1008→                >
+  1009→                  <Avatar className="h-9 w-9">
+  1010→                    <AvatarImage src={other?.avatarUrl || undefined} alt={other?.name} />
+  1011→                    <AvatarFallback className="bg-peach text-navy text-xs">{other?.name?.split(' ').map((p: string) => p[0]).slice(0, 2).join('')}</AvatarFallback>
+  1012→                  </Avatar>
+  1013→                  <div className="min-w-0 flex-1">
+  1014→                    <div className="flex items-center justify-between gap-2">
+  1015→                      <p className={`truncate text-sm ${isUnread ? 'font-bold text-navy' : 'font-medium text-navy/80'}`}>{other?.name}</p>
+  1016→                      {last && <span className="text-[10px] text-muted-foreground">{formatRelativeDate(last.sentAt)}</span>}
+  1017→                    </div>
+  1018→                    <p className={`truncate text-xs ${isUnread ? 'text-navy font-semibold' : 'text-muted-foreground'}`}>{last?.body || 'Start a conversation'}</p>
+  1019→                  </div>
+  1020→                  {isUnread && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-orange" />}
+  1021→                </button>
+  1022→              )
+  1023→            })}
+  1024→          </div>
+  1025→        </div>
+  1026→
+  1027→        {/* Conversation view */}
+  1028→        <div className="flex h-[60vh] flex-col rounded-2xl border border-border bg-white">
+  1029→          {!activeConv ? (
+  1030→            <div className="grid h-full place-items-center text-center">
+  1031→              <div>
+  1032→                <MessageCircle className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+  1033→                <p className="text-sm text-muted-foreground">Select a conversation to start chatting</p>
+  1034→              </div>
+  1035→            </div>
+  1036→          ) : loadingMsgs ? (
+  1037→            <div className="grid h-full place-items-center"><Skeleton className="h-12 w-12 rounded-full" /></div>
+  1038→          ) : (
+  1039→            <>
+  1040→              <div className="flex-1 overflow-y-auto stayora-scroll space-y-3 p-4">
+  1041→                {messages.map((m: any) => {
+  1042→                  const mine = m.senderId === user?.id
+  1043→                  return (
+  1044→                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+  1045→                      <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${mine ? 'bg-navy text-white' : 'bg-peach-light text-navy'}`}>
+  1046→                        <p>{m.body}</p>
+  1047→                        <p className={`mt-0.5 text-[10px] ${mine ? 'text-white/70' : 'text-muted-foreground'}`}>{formatRelativeDate(m.sentAt)}</p>
+  1048→                      </div>
+  1049→                    </div>
+  1050→                  )
+  1051→                })}
+  1052→              </div>
+  1053→              <div className="border-t border-border p-3 flex gap-2">
+  1054→                <Input
+  1055→                  value={input}
+  1056→                  onChange={(e) => setInput(e.target.value)}
+  1057→                  onKeyDown={(e) => e.key === 'Enter' && send()}
+  1058→                  placeholder="Type a message…"
+  1059→                  className="rounded-full"
+  1060→                />
+  1061→                <Button onClick={send} disabled={!input.trim() || sending} className="rounded-full bg-orange text-white">
+  1062→                  {sending ? 'Sending…' : 'Send'}
+  1063→                </Button>
+  1064→              </div>
+  1065→            </>
+  1066→          )}
+  1067→        </div>
+  1068→      </div>
+  1069→    </div>
+  1070→  )
+  1071→}
+  1072→
+  1073→// ============================================================
+  1074→// EARNINGS TAB
+  1075→// ============================================================
+  1076→function EarningsTab({ bookings, payouts, stats, loading }: any) {
+  1077→  const { showToast } = useAppStore()
+  1078→  if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />
+  1079→
+  1080→  const completedPayouts = payouts.filter((p: any) => p.status === 'COMPLETED')
+  1081→  const pendingPayouts = payouts.filter((p: any) => p.status === 'PENDING')
+  1082→  const grossRevenue = stats?.grossRevenue ?? bookings.reduce((s: number, b: any) => s + b.totalAmount, 0)
+  1083→  const netEarnings = stats?.netEarnings ?? completedPayouts.reduce((s: number, p: any) => s + p.amount, 0)
+  1084→  const pendingTotal = stats?.pendingPayouts ?? pendingPayouts.reduce((s: number, p: any) => s + p.amount, 0)
+  1085→
+  1086→  return (
+  1087→    <div className="space-y-6">
+  1088→      <div className="flex flex-wrap items-end justify-between gap-3">
+  1089→        <div>
+  1090→          <h1 className="text-2xl font-bold text-navy">Earnings</h1>
+  1091→          <p className="text-sm text-muted-foreground">Track your revenue, payouts, and projected income.</p>
+  1092→        </div>
+  1093→        <Button variant="outline" onClick={() => showToast('Export started', 'Your CSV will download shortly.', 'default')} className="rounded-full">
+  1094→          Export CSV
+  1095→        </Button>
+  1096→      </div>
+  1097→
+  1098→      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  1099→        <SummaryCard icon={DollarSign} label="Gross revenue" value={formatPrice(grossRevenue)} accent="bg-peach-light text-navy" />
+  1100→        <SummaryCard icon={Wallet} label="Net earnings" value={formatPrice(netEarnings)} accent="bg-navy text-white" />
+  1101→        <SummaryCard icon={Clock} label="Pending payouts" value={formatPrice(pendingTotal)} accent="bg-orange-100 text-orange-700" />
+  1102→        <SummaryCard icon={Check} label="Completed payouts" value={String(completedPayouts.length)} accent="bg-green-100 text-green-700" />
+  1103→      </div>
+  1104→
+  1105→      <Card>
+  1106→        <CardHeader><CardTitle className="text-navy">Payout history</CardTitle></CardHeader>
+  1107→        <CardContent className="p-0">
+  1108→          <div className="overflow-x-auto">
+  1109→            <Table>
+  1110→              <TableHeader>
+  1111→                <TableRow>
+  1112→                  <TableHead>Booking</TableHead>
+  1113→                  <TableHead>Amount</TableHead>
+  1114→                  <TableHead>Currency</TableHead>
+  1115→                  <TableHead>Status</TableHead>
+  1116→                  <TableHead>Provider</TableHead>
+  1117→                  <TableHead>Scheduled</TableHead>
+  1118→                  <TableHead>Completed</TableHead>
+  1119→                </TableRow>
+  1120→              </TableHeader>
+  1121→              <TableBody>
+  1122→                {payouts.length === 0 ? (
+  1123→                  <TableRow>
+  1124→                    <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">No payouts yet.</TableCell>
+  1125→                  </TableRow>
+  1126→                ) : payouts.map((p: any) => {
+  1127→                  const booking = bookings.find((b: any) => b.id === p.bookingId)
+  1128→                  return (
+  1129→                    <TableRow key={p.id}>
+  1130→                      <TableCell className="text-sm text-navy">{booking?.reference || p.bookingId.slice(0, 8)}</TableCell>
+  1131→                      <TableCell className="text-sm font-semibold text-navy">{formatPrice(p.amount)}</TableCell>
+  1132→                      <TableCell className="text-sm text-muted-foreground">{p.currency}</TableCell>
+  1133→                      <TableCell>
+  1134→                        <Badge variant="secondary" className={p.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : p.status === 'PENDING' ? 'bg-orange-100 text-orange-700' : 'bg-destructive/10 text-destructive'}>
+  1135→                          {p.status}
+  1136→                        </Badge>
+  1137→                      </TableCell>
+  1138→                      <TableCell className="text-sm text-muted-foreground capitalize">{p.provider}</TableCell>
+  1139→                      <TableCell className="text-sm text-muted-foreground">{p.scheduledAt ? formatDate(p.scheduledAt) : '—'}</TableCell>
+  1140→                      <TableCell className="text-sm text-muted-foreground">{p.completedAt ? formatDate(p.completedAt) : '—'}</TableCell>
+  1141→                    </TableRow>
+  1142→                  )
+  1143→                })}
+  1144→              </TableBody>
+  1145→            </Table>
+  1146→          </div>
+  1147→        </CardContent>
+  1148→      </Card>
+  1149→    </div>
+  1150→  )
+  1151→}
+  1152→
+  1153→function SummaryCard({ icon: Icon, label, value, accent }: any) {
+  1154→  return (
+  1155→    <Card>
+  1156→      <CardContent className="p-4">
+  1157→        <div className="mb-2 flex items-center justify-between">
+  1158→          <span className={`grid h-9 w-9 place-items-center rounded-lg ${accent}`}>
+  1159→            <Icon className="h-4 w-4" />
+  1160→          </span>
+  1161→        </div>
+  1162→        <p className="text-2xl font-bold text-navy">{value}</p>
+  1163→        <p className="text-xs text-muted-foreground">{label}</p>
+  1164→      </CardContent>
+  1165→    </Card>
+  1166→  )
+  1167→}
+  1168→
+  1169→// ============================================================
+  1170→// ANALYTICS TAB
+  1171→// ============================================================
+  1172→function AnalyticsTab({ listings, bookings, loading }: any) {
+  1173→  if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />
+  1174→  if (listings.length === 0) {
+  1175→    return <EmptyState icon={BarChart3} title="No analytics yet" subtitle="Publish a listing to start seeing impression and conversion data." />
+  1176→  }
+  1177→
+  1178→  // Aggregate per-listing metrics
+  1179→  const rows = listings.map((l: any) => {
+  1180→    const listingBookings = bookings.filter((b: any) => b.listingId === l.id)
+  1181→    const impressions = (l.views || 0) * 3 + 50 // mock lift
+  1182→    const detailViews = l.views || 0
+  1183→    const wishlistSaves = l.wishlistSaves || 0
+  1184→    const bookingInquiries = listingBookings.length
+  1185→    const bookingConfirmed = listingBookings.filter((b: any) => b.status === 'CONFIRMED' || b.status === 'COMPLETED').length
+  1186→    const revenue = listingBookings.reduce((s: number, b: any) => s + b.totalAmount, 0)
+  1187→    return {
+  1188→      id: l.id,
+  1189→      title: l.title,
+  1190→      impressions,
+  1191→      detailViews,
+  1192→      wishlistSaves,
+  1193→      bookingInquiries,
+  1194→      bookingConfirmed,
+  1195→      revenue,
+  1196→    }
+  1197→  })
+  1198→
+  1199→  const totals = {
+  1200→    impressions: rows.reduce((s, r) => s + r.impressions, 0),
+  1201→    detailViews: rows.reduce((s, r) => s + r.detailViews, 0),
+  1202→    wishlistSaves: rows.reduce((s, r) => s + r.wishlistSaves, 0),
+  1203→    bookingInquiries: rows.reduce((s, r) => s + r.bookingInquiries, 0),
+  1204→    bookingConfirmed: rows.reduce((s, r) => s + r.bookingConfirmed, 0),
+  1205→    revenue: rows.reduce((s, r) => s + r.revenue, 0),
+  1206→  }
+  1207→
+  1208→  return (
+  1209→    <div className="space-y-6">
+  1210→      <div>
+  1211→        <h1 className="text-2xl font-bold text-navy">Analytics</h1>
+  1212→        <p className="text-sm text-muted-foreground">Performance insights across all your listings.</p>
+  1213→      </div>
+  1214→
+  1215→      {/* Top metric cards with trend */}
+  1216→      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  1217→        <MetricCard icon={Eye} label="Impressions" value={formatNumber(totals.impressions)} delta={+12} />
+  1218→        <MetricCard icon={EyeIcon} label="Detail views" value={formatNumber(totals.detailViews)} delta={+8} />
+  1219→        <MetricCard icon={Heart} label="Wishlist saves" value={formatNumber(totals.wishlistSaves)} delta={+5} />
+  1220→        <MetricCard icon={MessageCircle} label="Booking inquiries" value={formatNumber(totals.bookingInquiries)} delta={-3} />
+  1221→        <MetricCard icon={Check} label="Bookings confirmed" value={formatNumber(totals.bookingConfirmed)} delta={+15} />
+  1222→        <MetricCard icon={DollarSign} label="Revenue" value={formatPrice(totals.revenue)} delta={+22} />
+  1223→      </div>
+  1224→
+  1225→      {/* Per-listing bar charts */}
+  1226→      <Card>
+  1227→        <CardHeader><CardTitle className="text-navy">Performance by listing</CardTitle></CardHeader>
+  1228→        <CardContent className="space-y-6">
+  1229→          {rows.map((r) => {
+  1230→            const maxRevenue = Math.max(...rows.map(x => x.revenue), 1)
+  1231→            const maxImpressions = Math.max(...rows.map(x => x.impressions), 1)
+  1232→            return (
+  1233→              <div key={r.id} className="space-y-2 rounded-xl border border-border p-3">
+  1234→                <div className="flex items-center justify-between gap-2">
+  1235→                  <h4 className="truncate text-sm font-semibold text-navy">{r.title}</h4>
+  1236→                  <span className="shrink-0 text-sm font-bold text-orange">{formatPrice(r.revenue)}</span>
+  1237→                </div>
+  1238→                <div className="space-y-2">
+  1239→                  <BarRow label="Impressions" value={r.impressions} max={maxImpressions} color="bg-navy" />
+  1240→                  <BarRow label="Detail views" value={r.detailViews} max={maxImpressions} color="bg-navy-light" />
+  1241→                  <BarRow label="Wishlist saves" value={r.wishlistSaves} max={Math.max(...rows.map(x => x.wishlistSaves), 1)} color="bg-orange" />
+  1242→                  <BarRow label="Bookings" value={r.bookingConfirmed} max={Math.max(...rows.map(x => x.bookingConfirmed), 1)} color="bg-orange-light" />
+  1243→                  <BarRow label="Revenue" value={r.revenue} max={maxRevenue} color="bg-orange" format={(v: number) => formatPrice(v)} />
+  1244→                </div>
+  1245→              </div>
+  1246→            )
+  1247→          })}
+  1248→        </CardContent>
+  1249→      </Card>
+  1250→
+  1251→      <Card>
+  1252→        <CardHeader><CardTitle className="text-navy">Conversion funnel</CardTitle></CardHeader>
+  1253→        <CardContent>
+  1254→          <div className="space-y-3">
+  1255→            <FunnelRow label="Impressions" value={totals.impressions} max={totals.impressions} color="bg-navy" />
+  1256→            <FunnelRow label="Detail views" value={totals.detailViews} max={totals.impressions} color="bg-navy-light" />
+  1257→            <FunnelRow label="Inquiries" value={totals.bookingInquiries} max={totals.impressions} color="bg-orange-light" />
+  1258→            <FunnelRow label="Confirmed" value={totals.bookingConfirmed} max={totals.impressions} color="bg-orange" />
+  1259→          </div>
+  1260→        </CardContent>
+  1261→      </Card>
+  1262→    </div>
+  1263→  )
+  1264→}
+  1265→
+  1266→function MetricCard({ icon: Icon, label, value, delta }: any) {
+  1267→  const positive = delta >= 0
+  1268→  return (
+  1269→    <Card>
+  1270→      <CardContent className="p-4">
+  1271→        <div className="flex items-center justify-between">
+  1272→          <span className="grid h-9 w-9 place-items-center rounded-lg bg-peach-light">
+  1273→            <Icon className="h-4 w-4 text-navy" />
+  1274→          </span>
+  1275→          <span className={`flex items-center gap-1 text-xs font-medium ${positive ? 'text-green-600' : 'text-destructive'}`}>
+  1276→            <TrendingUp className={`h-3 w-3 ${positive ? '' : 'rotate-180'}`} />
+  1277→            {positive ? '+' : ''}{delta}% <span className="text-muted-foreground">vs last period</span>
+  1278→          </span>
+  1279→        </div>
+  1280→        <p className="mt-3 text-2xl font-bold text-navy">{value}</p>
+  1281→        <p className="text-xs text-muted-foreground">{label}</p>
+  1282→      </CardContent>
+  1283→    </Card>
+  1284→  )
+  1285→}
+  1286→
+  1287→function BarRow({ label, value, max, color, format }: any) {
+  1288→  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
+  1289→  return (
+  1290→    <div>
+  1291→      <div className="mb-1 flex items-center justify-between text-xs">
+  1292→        <span className="text-muted-foreground">{label}</span>
+  1293→        <span className="font-medium text-navy">{format ? format(value) : formatNumber(value)}</span>
+  1294→      </div>
+  1295→      <div className="h-2 w-full rounded-full bg-muted">
+  1296→        <div className={`h-2 rounded-full ${color}`} style={{ width: `${pct}%` }} />
+  1297→      </div>
+  1298→    </div>
+  1299→  )
+  1300→}
+  1301→
+  1302→function FunnelRow({ label, value, max, color }: any) {
+  1303→  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
+  1304→  const rate = max > 0 ? ((value / max) * 100).toFixed(1) : '0.0'
+  1305→  return (
+  1306→    <div>
+  1307→      <div className="mb-1 flex items-center justify-between text-sm">
+  1308→        <span className="font-medium text-navy">{label}</span>
+  1309→        <span className="text-muted-foreground">{formatNumber(value)} <span className="ml-2 text-xs">({rate}%)</span></span>
+  1310→      </div>
+  1311→      <div className="h-3 w-full rounded-full bg-muted">
+  1312→        <div className={`h-3 rounded-full ${color}`} style={{ width: `${pct}%` }} />
+  1313→      </div>
+  1314→    </div>
+  1315→  )
+  1316→}
+  1317→
+  1318→// ============================================================
+  1319→// REVIEWS TAB
+  1320→// ============================================================
+  1321→function ReviewsTab({ bookings, loading }: any) {
+  1322→  const { showToast } = useAppStore()
+  1323→  const [filter, setFilter] = useState<'all' | '5' | '4' | '3'>('all')
+  1324→  const [responding, setResponding] = useState<string | null>(null)
+  1325→  const [responseBody, setResponseBody] = useState('')
+  1326→
+  1327→  const allReviews = bookings
+  1328→    .flatMap((b: any) => (b.reviews || []).map((r: any) => ({ ...r, listing: b.listing, booking: b })))
+  1329→    .filter((r: any) => r.authorId !== useAppStore.getState().user?.id)
+  1330→    .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  1331→
+  1332→  const filtered = allReviews.filter((r: any) => {
+  1333→    if (filter === 'all') return true
+  1334→    if (filter === '5') return r.rating === 5
+  1335→    if (filter === '4') return r.rating === 4
+  1336→    if (filter === '3') return r.rating <= 3
+  1337→    return true
+  1338→  })
+  1339→
+  1340→  const avg = allReviews.length ? (allReviews.reduce((s: number, r: any) => s + r.rating, 0) / allReviews.length).toFixed(2) : '0.00'
+  1341→
+  1342→  const submitResponse = async (reviewId: string) => {
+  1343→    if (!responseBody.trim()) {
+  1344→      showToast('Response cannot be empty', undefined, 'error')
+  1345→      return
+  1346→    }
+  1347→    setResponding(reviewId)
+  1348→    try {
+  1349→      const { replyToReview } = await import('@/lib/api')
+  1350→      await replyToReview(reviewId, responseBody.trim())
+  1351→      // Update local state so the UI reflects the reply immediately
+  1352→      const target = allReviews.find((r: any) => r.id === reviewId)
+  1353→      if (target) {
+  1354→        target.hostReply = responseBody.trim()
+  1355→        target.hostReplyAt = new Date().toISOString()
+  1356→      }
+  1357→      showToast('Response published', 'Your reply is now visible to guests.', 'success')
+  1358→      setResponding(null)
+  1359→      setResponseBody('')
+  1360→    } catch (e: any) {
+  1361→      showToast('Could not post response', e?.message, 'error')
+  1362→    }
+  1363→  }
+  1364→
+  1365→  if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />
+  1366→
+  1367→  return (
+  1368→    <div className="space-y-6">
+  1369→      <div>
+  1370→        <h1 className="text-2xl font-bold text-navy">Reviews</h1>
+  1371→        <p className="text-sm text-muted-foreground">Read what guests say about your properties and respond publicly.</p>
+  1372→      </div>
+  1373→
+  1374→      <div className="grid gap-4 sm:grid-cols-3">
+  1375→        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total reviews</p><p className="mt-1 text-2xl font-bold text-navy">{allReviews.length}</p></CardContent></Card>
+  1376→        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Average rating</p><p className="mt-1 flex items-center gap-1 text-2xl font-bold text-navy"><Star className="h-5 w-5 fill-orange text-orange" /> {avg}</p></CardContent></Card>
+  1377→        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Response rate</p><p className="mt-1 text-2xl font-bold text-navy">—</p></CardContent></Card>
+  1378→      </div>
+  1379→
+  1380→      <div className="flex flex-wrap gap-2">
+  1381→        {(['all', '5', '4', '3'] as const).map(s => (
+  1382→          <button
+  1383→            key={s}
+  1384→            onClick={() => setFilter(s)}
+  1385→            className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+  1386→              filter === s ? 'bg-navy text-white' : 'border border-border bg-white text-navy/70 hover:bg-peach-light/60'
+  1387→            }`}
+  1388→          >
+  1389→            {s === 'all' ? 'All ratings' : s === '5' ? '5 ★' : s === '4' ? '4 ★' : '3 ★ and below'}
+  1390→          </button>
+  1391→        ))}
+  1392→      </div>
+  1393→
+  1394→      {filtered.length === 0 ? (
+  1395→        <EmptyState icon={Star} title="No reviews in this filter" subtitle="Try adjusting the rating filter to see more reviews." />
+  1396→      ) : (
+  1397→        <div className="space-y-3">
+  1398→          {filtered.map((r: any) => (
+  1399→            <Card key={r.id}>
+  1400→              <CardContent className="p-4">
+  1401→                <div className="flex items-start gap-3">
+  1402→                  <Avatar className="h-10 w-10">
+  1403→                    <AvatarImage src={r.author?.avatarUrl || undefined} alt={r.author?.name} />
+  1404→                    <AvatarFallback className="bg-peach text-navy text-xs">{r.author?.name?.split(' ').map((p: string) => p[0]).slice(0, 2).join('')}</AvatarFallback>
+  1405→                  </Avatar>
+  1406→                  <div className="min-w-0 flex-1">
+  1407→                    <div className="flex flex-wrap items-center gap-2">
+  1408→                      <p className="text-sm font-semibold text-navy">{r.author?.name}</p>
+  1409→                      <div className="flex items-center gap-0.5">
+  1410→                        {Array.from({ length: 5 }).map((_, i) => (
+  1411→                          <Star key={i} className={`h-3 w-3 ${i < r.rating ? 'fill-orange text-orange' : 'text-muted-foreground/30'}`} />
+  1412→                        ))}
+  1413→                      </div>
+  1414→                      <span className="text-[10px] text-muted-foreground">· {formatRelativeDate(r.createdAt)}</span>
+  1415→                    </div>
+  1416→                    <p className="text-xs text-muted-foreground">{r.listing?.title}</p>
+  1417→                    {r.body && <p className="mt-2 text-sm text-navy/90">{r.body}</p>}
+  1418→
+  1419→                    {responding === r.id ? (
+  1420→                      <div className="mt-3 space-y-2">
+  1421→                        <Textarea
+  1422→                          autoFocus
+  1423→                          value={responseBody}
+  1424→                          onChange={(e) => setResponseBody(e.target.value)}
+  1425→                          placeholder="Write your public response…"
+  1426→                          rows={3}
+  1427→                          className="rounded-lg"
+  1428→                        />
+  1429→                        <div className="flex gap-2">
+  1430→                          <Button size="sm" onClick={() => submitResponse(r.id)} disabled={!responseBody.trim()} className="rounded-full bg-orange text-white">
+  1431→                            Publish response
+  1432→                          </Button>
+  1433→                          <Button size="sm" variant="outline" onClick={() => { setResponding(null); setResponseBody('') }} className="rounded-full">Cancel</Button>
+  1434→                        </div>
+  1435→                      </div>
+  1436→                    ) : r.hostReply ? (
+  1437→                      <div className="mt-3 rounded-lg bg-peach-light/60 p-3">
+  1438→                        <p className="mb-1 text-xs font-semibold text-navy">Your response:</p>
+  1439→                        <p className="text-sm text-foreground">{r.hostReply}</p>
+  1440→                        {r.hostReplyAt && <p className="mt-1 text-[10px] text-muted-foreground">{formatRelativeDate(r.hostReplyAt)}</p>}
+  1441→                      </div>
+  1442→                    ) : (
+  1443→                      <Button size="sm" variant="outline" onClick={() => { setResponding(r.id); setResponseBody('') }} className="mt-3 rounded-full">
+  1444→                        Respond
+  1445→                      </Button>
+  1446→                    )}
+  1447→                  </div>
+  1448→                </div>
+  1449→              </CardContent>
+  1450→            </Card>
+  1451→          ))}
+  1452→        </div>
+  1453→      )}
+  1454→    </div>
+  1455→  )
+  1456→}
+  1457→
+  1458→// ============================================================
+  1459→// CO-HOSTS TAB
+  1460→// ============================================================
+  1461→interface CoHost {
+  1462→  id: string
+  1463→  name: string
+  1464→  email: string
+  1465→  avatarUrl?: string
+  1466→  role: 'OWNER' | 'CO_HOST' | 'CLEANER' | 'CONCIERGE'
+  1467→  permissions: string[]
+  1468→  listingIds: string[]
+  1469→}
+  1470→
+  1471→const MOCK_COHOSTS: CoHost[] = [
+  1472→  { id: '1', name: 'Aisha Patel', email: 'aisha@example.com', role: 'CO_HOST', permissions: ['manage_calendar', 'respond_messages', 'view_earnings'], listingIds: ['all'] },
+  1473→  { id: '2', name: 'Marco Rinaldi', email: 'marco@example.com', role: 'CLEANER', permissions: ['view_calendar'], listingIds: ['all'] },
+  1474→  { id: '3', name: 'Sofia Chen', email: 'sofia@example.com', role: 'CONCIERGE', permissions: ['respond_messages', 'manage_bookings'], listingIds: ['all'] },
+  1475→]
+  1476→
+  1477→const ROLE_LABELS: Record<CoHost['role'], string> = {
+  1478→  OWNER: 'Owner',
+  1479→  CO_HOST: 'Co-host',
+  1480→  CLEANER: 'Cleaner',
+  1481→  CONCIERGE: 'Concierge',
+  1482→}
+  1483→
+  1484→const PERMISSION_LABELS: Record<string, string> = {
+  1485→  manage_calendar: 'Manage calendar',
+  1486→  respond_messages: 'Respond to messages',
+  1487→  view_earnings: 'View earnings',
+  1488→  manage_bookings: 'Manage bookings',
+  1489→  edit_listing: 'Edit listing details',
+  1490→}
+  1491→
+  1492→function CoHostsTab({ listings }: { listings: any[] }) {
+  1493→  const { showToast } = useAppStore()
+  1494→  const [cohosts, setCohosts] = useState<CoHost[]>(MOCK_COHOSTS)
+  1495→  const [inviteOpen, setInviteOpen] = useState(false)
+  1496→  const [email, setEmail] = useState('')
+  1497→  const [perms, setPerms] = useState<Record<string, boolean>>({
+  1498→    manage_calendar: true,
+  1499→    respond_messages: true,
+  1500→    view_earnings: false,
+  1501→    manage_bookings: false,
+  1502→    edit_listing: false,
+  1503→  })
+  1504→
+  1505→  const sendInvite = () => {
+  1506→    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  1507→      showToast('Enter a valid email', undefined, 'error')
+  1508→      return
+  1509→    }
+  1510→    const selectedPerms = Object.keys(perms).filter(k => perms[k])
+  1511→    showToast('Invitation sent', `Email sent to ${email} with ${selectedPerms.length} permission${selectedPerms.length === 1 ? '' : 's'}.`, 'success')
+  1512→    setCohosts(c => [...c, { id: `${c.length + 1}`, name: email.split('@')[0], email, role: 'CO_HOST', permissions: selectedPerms, listingIds: ['all'] }])
+  1513→    setEmail('')
+  1514→    setInviteOpen(false)
+  1515→  }
+  1516→
+  1517→  const togglePerm = (key: string) => setPerms(p => ({ ...p, [key]: !p[key] }))
+  1518→
+  1519→  return (
+  1520→    <div className="space-y-6">
+  1521→      <div className="flex flex-wrap items-end justify-between gap-3">
+  1522→        <div>
+  1523→          <h1 className="text-2xl font-bold text-navy">Co-hosts</h1>
+  1524→          <p className="text-sm text-muted-foreground">Invite teammates and delegate tasks for your listings.</p>
+  1525→        </div>
+  1526→        <Button onClick={() => setInviteOpen(true)} className="rounded-full bg-orange text-white">
+  1527→          <Plus className="h-4 w-4" /> Invite co-host
+  1528→        </Button>
+  1529→      </div>
+  1530→
+  1531→      <Card>
+  1532→        <CardHeader><CardTitle className="text-navy">Team members</CardTitle></CardHeader>
+  1533→        <CardContent className="space-y-3">
+  1534→          {cohosts.map(ch => {
+  1535→            const assignedListings = ch.listingIds.includes('all') ? listings : listings.filter(l => ch.listingIds.includes(l.id))
+  1536→            return (
+  1537→              <div key={ch.id} className="flex flex-wrap items-start gap-3 rounded-xl border border-border p-3">
+  1538→                <Avatar className="h-10 w-10">
+  1539→                  <AvatarImage src={ch.avatarUrl || undefined} alt={ch.name} />
+  1540→                  <AvatarFallback className="bg-navy text-white text-xs">{ch.name.split(' ').map(p => p[0]).slice(0, 2).join('')}</AvatarFallback>
+  1541→                </Avatar>
+  1542→                <div className="min-w-0 flex-1">
+  1543→                  <div className="flex flex-wrap items-center gap-2">
+  1544→                    <p className="font-semibold text-navy">{ch.name}</p>
+  1545→                    <Badge variant="secondary" className={
+  1546→                      ch.role === 'OWNER' ? 'bg-orange text-white' :
+  1547→                      ch.role === 'CO_HOST' ? 'bg-navy text-white' :
+  1548→                      'bg-peach text-navy'
+  1549→                    }>{ROLE_LABELS[ch.role]}</Badge>
+  1550→                  </div>
+  1551→                  <p className="text-xs text-muted-foreground">{ch.email}</p>
+  1552→                  <div className="mt-2 flex flex-wrap gap-1.5">
+  1553→                    {ch.permissions.map(p => (
+  1554→                      <Badge key={p} variant="outline" className="text-[10px] font-normal text-navy/70">{PERMISSION_LABELS[p] || p}</Badge>
+  1555→                    ))}
+  1556→                    {ch.permissions.length === 0 && <span className="text-xs text-muted-foreground">No permissions</span>}
+  1557→                  </div>
+  1558→                  <p className="mt-2 text-[10px] text-muted-foreground">
+  1559→                    Assigned to: {assignedListings.length === listings.length ? 'All listings' : assignedListings.length > 0 ? assignedListings.map(l => l.title).join(', ') : 'No listings'}
+  1560→                  </p>
+  1561→                </div>
+  1562→                <div className="flex gap-1">
+  1563→                  <Button size="sm" variant="ghost" onClick={() => showToast('Edit permissions coming soon', undefined, 'default')} className="text-navy">
+  1564→                    <Edit3 className="h-3.5 w-3.5" />
+  1565→                  </Button>
+  1566→                  <Button size="sm" variant="ghost" onClick={() => showToast('Removal coming soon', undefined, 'default')} className="text-destructive">
+  1567→                    <X className="h-3.5 w-3.5" />
+  1568→                  </Button>
+  1569→                </div>
+  1570→              </div>
+  1571→            )
+  1572→          })}
+  1573→        </CardContent>
+  1574→      </Card>
+  1575→
+  1576→      <Card>
+  1577→        <CardHeader><CardTitle className="text-navy">Roles & permissions</CardTitle></CardHeader>
+  1578→        <CardContent>
+  1579→          <Table>
+  1580→            <TableHeader>
+  1581→              <TableRow>
+  1582→                <TableHead>Role</TableHead>
+  1583→                <TableHead>Calendar</TableHead>
+  1584→                <TableHead>Messages</TableHead>
+  1585→                <TableHead>Bookings</TableHead>
+  1586→                <TableHead>Earnings</TableHead>
+  1587→                <TableHead>Edit listing</TableHead>
+  1588→              </TableRow>
+  1589→            </TableHeader>
+  1590→            <TableBody>
+  1591→              <PermissionRow role="Owner" perms={[true, true, true, true, true]} />
+  1592→              <PermissionRow role="Co-host" perms={[true, true, true, false, false]} />
+  1593→              <PermissionRow role="Cleaner" perms={[true, false, false, false, false]} />
+  1594→              <PermissionRow role="Concierge" perms={[false, true, true, false, false]} />
+  1595→            </TableBody>
+  1596→          </Table>
+  1597→        </CardContent>
+  1598→      </Card>
+  1599→
+  1600→      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+  1601→        <DialogContent>
+  1602→          <DialogHeader>
+  1603→            <DialogTitle className="text-navy">Invite a co-host</DialogTitle>
+  1604→            <DialogDescription>Send an invitation by email and pick the permissions you want to grant.</DialogDescription>
+  1605→          </DialogHeader>
+  1606→          <div className="space-y-4">
+  1607→            <div>
+  1608→              <Label htmlFor="invite-email">Email address</Label>
+  1609→              <Input
+  1610→                id="invite-email"
+  1611→                type="email"
+  1612→                value={email}
+  1613→                onChange={(e) => setEmail(e.target.value)}
+  1614→                placeholder="teammate@example.com"
+  1615→                className="mt-1 rounded-lg"
+  1616→              />
+  1617→            </div>
+  1618→            <div>
+  1619→              <Label className="mb-2 block">Permissions</Label>
+  1620→              <div className="space-y-2">
+  1621→                {Object.keys(PERMISSION_LABELS).map(key => (
+  1622→                  <label key={key} className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-2 hover:bg-peach-light/40">
+  1623→                    <Checkbox checked={perms[key]} onCheckedChange={() => togglePerm(key)} />
+  1624→                    <span className="text-sm text-navy">{PERMISSION_LABELS[key]}</span>
+  1625→                  </label>
+  1626→                ))}
+  1627→              </div>
+  1628→            </div>
+  1629→          </div>
+  1630→          <DialogFooter>
+  1631→            <Button variant="outline" onClick={() => setInviteOpen(false)} className="rounded-full">Cancel</Button>
+  1632→            <Button onClick={sendInvite} className="rounded-full bg-orange text-white">Send invitation</Button>
+  1633→          </DialogFooter>
+  1634→        </DialogContent>
+  1635→      </Dialog>
+  1636→    </div>
+  1637→  )
+  1638→}
+  1639→
+  1640→function PermissionRow({ role, perms }: { role: string; perms: boolean[] }) {
+  1641→  return (
+  1642→    <TableRow>
+  1643→      <TableCell className="font-medium text-navy">{role}</TableCell>
+  1644→      {perms.map((p, i) => (
+  1645→        <TableCell key={i}>
+  1646→          {p ? <Check className="h-4 w-4 text-green-600" /> : <X className="h-4 w-4 text-muted-foreground/40" />}
+  1647→        </TableCell>
+  1648→      ))}
+  1649→    </TableRow>
+  1650→  )
+  1651→}
+  1652→
+  1653→// ============================================================
+  1654→// CREATE LISTING PLACEHOLDER
+  1655→// (HostTab='create' — user normally lands here via sidebar. Parent's view='create-listing' takes over.)
+  1656→// ============================================================
+  1657→function CreateListingPlaceholder({ onCreateListing }: { onCreateListing: () => void }) {
+  1658→  return (
+  1659→    <EmptyState
+  1660→      icon={Plus}
+  1661→      title="Create a new listing"
+  1662→      subtitle="Launch our step-by-step wizard to publish a property in minutes."
+  1663→      actionLabel="Open wizard"
+  1664→      onAction={onCreateListing}
+  1665→    />
+  1666→  )
+  1667→}
+  1668→

@@ -620,6 +620,99 @@ export async function GET(req: NextRequest) {
         const score = Math.round((passedWeight / totalWeight) * 100)
         return NextResponse.json({ score, checks, totalWeight, passedWeight })
       }
+      // -------- Host Today page --------
+      case 'today': {
+        const me = await requireAuth(['HOST', 'ADMIN'])
+        if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        const todayStart = new Date()
+        todayStart.setHours(0, 0, 0, 0)
+        const todayEnd = new Date()
+        todayEnd.setHours(23, 59, 59, 999)
+        const bookings = await db.booking.findMany({
+          where: { hostId: me.id, status: { in: ['CONFIRMED', 'PENDING'] } },
+          include: { listing: { include: { photos: { where: { isCover: true }, take: 1 } } }, guest: true },
+        })
+        const arrivals = bookings.filter(b => {
+          const ci = new Date(b.checkIn)
+          return ci >= todayStart && ci <= todayEnd
+        })
+        const departures = bookings.filter(b => {
+          const co = new Date(b.checkOut)
+          return co >= todayStart && co <= todayEnd
+        })
+        const pendingRequests = bookings.filter(b => b.status === 'PENDING')
+        const conversations = await db.conversation.findMany({
+          where: { OR: [{ userAId: me.id }, { userBId: me.id }] },
+          include: { messages: { orderBy: { sentAt: 'desc' }, take: 1 }, userA: true, userB: true },
+        })
+        const unreadMessages = conversations.filter(c => {
+          const last = c.messages?.[0]
+          return last && last.senderId !== me.id && !last.isRead
+        }).length
+        const upcomingBookings = bookings
+          .filter(b => b.status === 'CONFIRMED' && new Date(b.checkIn) >= todayStart)
+          .sort((a, b) => new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime())
+          .slice(0, 5)
+        return NextResponse.json({
+          arrivals, departures, pendingRequests, upcomingBookings,
+          stats: { arrivals: arrivals.length, departures: departures.length, pendingRequests: pendingRequests.length, unreadMessages },
+        })
+      }
+      // -------- Host Verifications --------
+      case 'verifications': {
+        const me = await requireAuth()
+        if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        const records = await db.verificationRecord.findMany({
+          where: { userId: me.id },
+          orderBy: { createdAt: 'desc' },
+        })
+        // Build verification status object
+        const types = ['EMAIL', 'PHONE', 'IDENTITY', 'ADDRESS', 'PAYOUT', 'TAX']
+        const statuses: Record<string, { status: string; verifiedAt?: string; referenceId?: string }> = {}
+        for (const t of types) {
+          const rec = records.find(r => r.type === t)
+          statuses[t] = {
+            status: rec?.status || 'NOT_STARTED',
+            verifiedAt: rec?.createdAt?.toISOString(),
+            referenceId: rec?.payload || undefined,
+          }
+        }
+        return NextResponse.json({ verifications: statuses, user: toSafeUser(await db.user.findUnique({ where: { id: me.id } })!) })
+      }
+      // -------- Host Account Settings --------
+      case 'account-settings': {
+        const me = await requireAuth()
+        if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        const user = await db.user.findUnique({ where: { id: me.id } })
+        if (!user) return NextResponse.json({ error: 'not found' }, { status: 404 })
+        const notificationPrefs = await db.notificationPreference.findUnique({ where: { userId: me.id } })
+        return NextResponse.json({
+          personal: {
+            legalName: user.name,
+            email: user.email,
+            phone: user.phone || '',
+            country: user.country || '',
+            bio: user.bio || '',
+            avatarUrl: user.avatarUrl || '',
+          },
+          security: {
+            twoFactorEnabled: false,
+            sessions: 1,
+            lastLogin: new Date().toISOString(),
+          },
+          notifications: {
+            emailEnabled: notificationPrefs?.emailEnabled ?? true,
+            pushEnabled: notificationPrefs?.pushEnabled ?? true,
+            smsEnabled: notificationPrefs?.smsEnabled ?? false,
+            marketingEnabled: notificationPrefs?.marketingEnabled ?? false,
+          },
+          payments: {
+            payoutMethods: [],
+            currency: user.currency || 'USD',
+            languages: user.languages || 'en',
+          },
+        })
+      }
       default:
         return NextResponse.json({ error: 'unknown op' }, { status: 400 })
     }
@@ -1368,6 +1461,64 @@ Pick at most 3 recommendations from the listings above. If the user's request do
           data: { actorId: me.id, action: 'EMAIL_DELETE', resource: 'EmailTemplate', resourceId: id, ip: '127.0.0.1' },
         })
         return NextResponse.json({ ok: true })
+      }
+      // ============================================================
+      // HOST VERIFICATION + ACCOUNT SETTINGS
+      // ============================================================
+      case 'start-verification': {
+        const me = await requireAuth()
+        if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        const { type, payload } = body // type: EMAIL | PHONE | IDENTITY | ADDRESS | PAYOUT | TAX
+        if (!type) return NextResponse.json({ error: 'type required' }, { status: 400 })
+        // For demo: auto-approve EMAIL and PHONE, set others to PENDING
+        const status = ['EMAIL', 'PHONE'].includes(type) ? 'APPROVED' : 'PENDING'
+        // Delete existing record of this type
+        await db.verificationRecord.deleteMany({ where: { userId: me.id, type } })
+        const record = await db.verificationRecord.create({
+          data: { userId: me.id, type, status, payload: payload || null },
+        })
+        // If email verification, mark user as verified
+        if (type === 'EMAIL' && status === 'APPROVED') {
+          await db.user.update({ where: { id: me.id }, data: { isVerified: true } })
+        }
+        await db.auditLog.create({
+          data: { actorId: me.id, action: `VERIFICATION_${type}_${status}`, resource: 'VerificationRecord', resourceId: record.id, ip: '127.0.0.1' },
+        })
+        return NextResponse.json({ record })
+      }
+      case 'update-notification-preferences': {
+        const me = await requireAuth()
+        if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        const { emailEnabled, pushEnabled, smsEnabled, marketingEnabled } = body
+        // Upsert notification preference
+        const existing = await db.notificationPreference.findUnique({ where: { userId: me.id } })
+        const data = {
+          userId: me.id,
+          emailEnabled: emailEnabled ?? existing?.emailEnabled ?? true,
+          pushEnabled: pushEnabled ?? existing?.pushEnabled ?? true,
+          smsEnabled: smsEnabled ?? existing?.smsEnabled ?? false,
+          marketingEnabled: marketingEnabled ?? existing?.marketingEnabled ?? false,
+        }
+        if (existing) {
+          await db.notificationPreference.update({ where: { userId: me.id }, data })
+        } else {
+          await db.notificationPreference.create({ data })
+        }
+        return NextResponse.json({ ok: true })
+      }
+      case 'update-account-settings': {
+        const me = await requireAuth()
+        if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        const { phone, languages, currency } = body
+        const updated = await db.user.update({
+          where: { id: me.id },
+          data: {
+            ...(phone !== undefined && { phone }),
+            ...(languages !== undefined && { languages }),
+            ...(currency !== undefined && { currency }),
+          },
+        })
+        return NextResponse.json({ user: toSafeUser(updated) })
       }
       default:
         return NextResponse.json({ error: 'unknown op' }, { status: 400 })

@@ -18,7 +18,7 @@ export type ViewName =
   | 'host-profile'
 
 export type GuestTab = 'overview' | 'trips' | 'wishlists' | 'messages' | 'reviews' | 'payments' | 'notifications' | 'profile' | 'support'
-export type HostTab = 'overview' | 'listings' | 'calendar' | 'reservations' | 'inbox' | 'earnings' | 'analytics' | 'reviews' | 'cohosts' | 'create'
+export type HostTab = 'today' | 'overview' | 'listings' | 'calendar' | 'reservations' | 'inbox' | 'earnings' | 'analytics' | 'reviews' | 'cohosts' | 'verifications' | 'account-settings' | 'create'
 export type AdminTab = 'dashboard' | 'users' | 'listings' | 'bookings' | 'finance' | 'support' | 'audit' | 'content'
 
 export interface AppUser {
