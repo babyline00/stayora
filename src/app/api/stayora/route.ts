@@ -124,10 +124,10 @@ export async function GET(req: NextRequest) {
         if (category) where.category = category
         if (dest) {
           where.OR = [
-            { city: { contains: dest, mode: 'insensitive' } },
-            { country: { contains: dest, mode: 'insensitive' } },
-            { neighborhood: { contains: dest, mode: 'insensitive' } },
-            { region: { contains: dest, mode: 'insensitive' } },
+            { city: { contains: dest } },
+            { country: { contains: dest } },
+            { neighborhood: { contains: dest } },
+            { region: { contains: dest } },
           ]
         }
         if (minPrice || maxPrice) {
@@ -188,14 +188,6 @@ export async function GET(req: NextRequest) {
           orderBy: { date: 'asc' },
         })
         return NextResponse.json({ availability })
-      }
-      case 'destinations': {
-        const dests = await db.listing.findMany({
-          where: { status: 'PUBLISHED' },
-          select: { city: true, country: true, countryCode: true },
-          distinct: ['city'],
-        })
-        return NextResponse.json({ destinations: dests })
       }
       case 'reviews': {
         const listingId = url.searchParams.get('listingId') || ''
@@ -401,13 +393,13 @@ export async function GET(req: NextRequest) {
         const city = url.searchParams.get('city') || ''
         if (!city) return NextResponse.json({ error: 'city required' }, { status: 400 })
         const listings = await db.listing.findMany({
-          where: { status: 'PUBLISHED', city: { contains: city, mode: 'insensitive' } },
+          where: { status: 'PUBLISHED', city: { contains: city } },
           include: { photos: { where: { isCover: true }, take: 1 }, host: true },
           orderBy: { rating: 'desc' },
           take: 20,
         })
         const totalListings = await db.listing.count({
-          where: { status: 'PUBLISHED', city: { contains: city, mode: 'insensitive' } },
+          where: { status: 'PUBLISHED', city: { contains: city } },
         })
         const avgPrice = listings.length ? Math.round(listings.reduce((s, l) => s + l.basePrice, 0) / listings.length) : 0
         const categories = Array.from(new Set(listings.map(l => l.category)))
@@ -442,9 +434,9 @@ export async function GET(req: NextRequest) {
         const where: any = { status: 'PUBLISHED' }
         if (dest) {
           where.OR = [
-            { city: { contains: dest, mode: 'insensitive' } },
-            { country: { contains: dest, mode: 'insensitive' } },
-            { neighborhood: { contains: dest, mode: 'insensitive' } },
+            { city: { contains: dest } },
+            { country: { contains: dest } },
+            { neighborhood: { contains: dest } },
           ]
         }
         if (north && south && east && west) {
