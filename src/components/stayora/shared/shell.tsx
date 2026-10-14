@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useAppStore, ViewName } from '@/store/useAppStore'
 import {
-  Home, Search, Compass, Wrench, User, Crown, Shield, Menu, X, Bell, Heart, MessageCircle, LogOut, ChevronDown,
+  Home, Search, Compass, Wrench, User, Crown, Shield, Menu, X, Bell, Heart, MessageCircle, LogOut, ChevronDown, Sparkles,
 } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -18,6 +18,7 @@ const NAV_ITEMS: { view: ViewName; label: string; icon: any }[] = [
   { view: 'search', label: 'Search', icon: Search },
   { view: 'experiences', label: 'Experiences', icon: Compass },
   { view: 'services', label: 'Services', icon: Wrench },
+  { view: 'ai-assistant', label: 'AI Assistant', icon: Sparkles },
 ]
 
 export function Shell({ children }: { children: React.ReactNode }) {

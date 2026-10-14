@@ -22,7 +22,7 @@ export function BookingModal() {
     showToast, setGuestTab,
   } = useAppStore()
   const [listing, setListing] = useState<any>(null)
-  const [dates, setDates] = useState<{ checkIn?: Date; checkOut?: Date }>({})
+  const [dates, setDates] = useState<{ from?: Date; to?: Date }>({})
   const [guests, setGuests] = useState(bookingGuests)
   const [coupon, setCoupon] = useState('')
   const [discount, setDiscount] = useState(0)
@@ -35,8 +35,8 @@ export function BookingModal() {
     if (!bookingListingId) return
     fetchListing(bookingListingId).then(d => {
       setListing(d.listing)
-      if (bookingDates.checkIn) setDates({ checkIn: new Date(bookingDates.checkIn) })
-      if (bookingDates.checkOut) setDates(prev => ({ ...prev, checkOut: new Date(bookingDates.checkOut!) }))
+      if (bookingDates.checkIn) setDates(prev => ({ ...prev, from: new Date(bookingDates.checkIn) }))
+      if (bookingDates.checkOut) setDates(prev => ({ ...prev, to: new Date(bookingDates.checkOut!) }))
     }).catch(() => {})
   }, [bookingListingId, bookingDates.checkIn, bookingDates.checkOut])
 
@@ -49,8 +49,8 @@ export function BookingModal() {
     }
   }, [bookingListingId])
 
-  const nights = dates.checkIn && dates.checkOut
-    ? Math.max(1, Math.round((dates.checkOut.getTime() - dates.checkIn.getTime()) / 86400000))
+  const nights = dates.from && dates.to
+    ? Math.max(1, Math.round((dates.to.getTime() - dates.from.getTime()) / 86400000))
     : 0
 
   const nightlySubtotal = listing ? listing.basePrice * nights : 0
@@ -77,21 +77,45 @@ export function BookingModal() {
   }
 
   const submit = async () => {
-    if (!listing || !dates.checkIn || !dates.checkOut) return
+    if (!listing || !dates.from || !dates.to) return
     setStep('processing')
     setError('')
     try {
       const result: any = await createBooking({
         listingId: listing.id,
-        checkIn: dates.checkIn.toISOString().split('T')[0],
-        checkOut: dates.checkOut.toISOString().split('T')[0],
+        checkIn: dates.from.toISOString().split('T')[0],
+        checkOut: dates.to.toISOString().split('T')[0],
         adults: guests.adults, children: guests.children,
         infants: guests.infants, pets: guests.pets,
         couponCode: discount > 0 ? coupon : undefined,
       })
       setReference(result.booking.reference)
-      setStep('done')
-      showToast('Booking confirmed', result.booking.reference, 'success')
+      // If the booking was created as PENDING (non-instant book), we need to collect payment to confirm it
+      if (result.booking.status === 'PENDING' || listing.instantBook) {
+        showToast('Pay to confirm', `Reservation ${result.booking.reference} held — complete payment to confirm.`, 'default')
+        // Close booking modal first, then open payment modal after a delay to avoid focus conflict
+        setTimeout(() => {
+          closeBooking()
+          setTimeout(() => {
+            useAppStore.getState().openPayment({
+              amount: totalAmount,
+              currency: 'usd',
+              bookingId: result.booking.id,
+              listingId: listing.id,
+              metadata: {
+                listingTitle: listing.title,
+                checkIn: dates.from?.toLocaleDateString(),
+                checkOut: dates.to?.toLocaleDateString(),
+                nights,
+              },
+            })
+          }, 200)
+        }, 1200)
+        setStep('done')
+      } else {
+        setStep('done')
+        showToast('Booking confirmed', result.booking.reference, 'success')
+      }
     } catch (err: any) {
       setError(err.message || 'Booking failed')
       setStep('error')
@@ -193,7 +217,7 @@ export function BookingModal() {
 
             <Button
               onClick={submit}
-              disabled={!dates.checkIn || !dates.checkOut}
+              disabled={!dates.from || !dates.to}
               className="mt-4 w-full rounded-full bg-orange text-white hover:bg-orange/90"
             >
               {listing.instantBook ? 'Confirm & pay' : 'Send request'}
@@ -228,7 +252,7 @@ export function BookingModal() {
               <div className="font-medium text-navy">{listing.title}</div>
               <div className="text-muted-foreground">{listing.city}, {listing.country}</div>
               <div className="mt-1 text-muted-foreground">
-                {dates.checkIn?.toLocaleDateString()} → {dates.checkOut?.toLocaleDateString()} · {nights} {nights === 1 ? 'night' : 'nights'}
+                {dates.from?.toLocaleDateString()} → {dates.to?.toLocaleDateString()} · {nights} {nights === 1 ? 'night' : 'nights'}
               </div>
               <div className="mt-1 font-semibold text-navy">{formatPrice(totalAmount)}</div>
             </div>

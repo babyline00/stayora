@@ -101,3 +101,60 @@ export const adminRefund = (bookingId: string, amount?: number) =>
 
 export const createSupportTicket = (data: { subject: string; category?: string; description?: string; priority?: string; bookingId?: string }) =>
   postJSON('support-ticket', data)
+
+// AI Travel Assistant
+export const askTravelAssistant = (query: string, userPrefs?: any) =>
+  postJSON<{ greeting: string; summary: string; recommendations: any[]; tips: string[]; followups: string[] }>('ai-travel-assistant', { query, userPrefs })
+
+// Payment Gateway proxy (through the main API, which forwards to port 3004)
+export const createPaymentIntent = (data: { amount: number; currency?: string; bookingId?: string; listingId?: string; userId?: string }) =>
+  postJSON<{ intent: any }>('create-payment-intent', data)
+
+// Confirm a payment intent (calls gateway directly via XTransformPort=3004)
+export async function confirmPaymentIntent(intentId: string, paymentMethodId: string): Promise<any> {
+  const r = await fetch(`/payment-intents/${intentId}/confirm?XTransformPort=3004`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ payment_method: paymentMethodId }),
+  })
+  const data = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error((data as any)?.error || `Gateway error ${r.status}`)
+  return data
+}
+
+// Authenticate a 3DS challenge
+export async function authenticate3DS(intentId: string): Promise<any> {
+  const r = await fetch(`/payment-intents/${intentId}/authenticate?XTransformPort=3004`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  })
+  const data = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error((data as any)?.error || `Gateway error ${r.status}`)
+  return data
+}
+
+// Create a payment method (tokenize a card) — calls gateway directly via XTransformPort=3004
+export async function createPaymentMethod(card: { number: string; exp_month: number; exp_year: number; cvc: string }, billing_details?: any): Promise<any> {
+  const r = await fetch(`/payment-methods?XTransformPort=3004`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ card, billing_details }),
+  })
+  const data = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error((data as any)?.error || `Gateway error ${r.status}`)
+  return data
+}
+
+// Map markers
+export const fetchMapMarkers = (destination?: string) => getJSON('map-markers', { destination })
+
+// Recently viewed
+export const fetchRecentlyViewed = (ids: string[]) => getJSON('recently-viewed', { ids: ids.join(',') })
+
+// Destination landing page
+export const fetchDestination = (city: string) => getJSON('destination', { city })
+
+// Share wishlist
+export const shareWishlist = (wishlistId: string, recipientEmails?: string[]) =>
+  postJSON('share-wishlist', { wishlistId, recipientEmails })

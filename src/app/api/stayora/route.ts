@@ -390,6 +390,63 @@ export async function GET(req: NextRequest) {
         else discount = coupon.value
         return NextResponse.json({ valid: true, discount, coupon })
       }
+      case 'destination': {
+        // Single destination landing page — listings grouped + editorial content
+        const city = url.searchParams.get('city') || ''
+        if (!city) return NextResponse.json({ error: 'city required' }, { status: 400 })
+        const listings = await db.listing.findMany({
+          where: { status: 'PUBLISHED', city: { contains: city, mode: 'insensitive' } },
+          include: { photos: { where: { isCover: true }, take: 1 }, host: true },
+          orderBy: { rating: 'desc' },
+          take: 20,
+        })
+        const totalListings = await db.listing.count({
+          where: { status: 'PUBLISHED', city: { contains: city, mode: 'insensitive' } },
+        })
+        const avgPrice = listings.length ? Math.round(listings.reduce((s, l) => s + l.basePrice, 0) / listings.length) : 0
+        const categories = Array.from(new Set(listings.map(l => l.category)))
+        return NextResponse.json({
+          city,
+          listings,
+          totalListings,
+          avgPrice,
+          categories,
+        })
+      }
+      case 'recently-viewed': {
+        const idsParam = url.searchParams.get('ids') || ''
+        const ids = idsParam.split(',').filter(Boolean)
+        if (!ids.length) return NextResponse.json({ listings: [] })
+        const listings = await db.listing.findMany({
+          where: { id: { in: ids }, status: 'PUBLISHED' },
+          include: { photos: { where: { isCover: true }, take: 1 }, host: true },
+        })
+        // Preserve order from ids
+        const ordered = ids.map(id => listings.find(l => l.id === id)).filter(Boolean)
+        return NextResponse.json({ listings: ordered })
+      }
+      case 'map-markers': {
+        // Lightweight listing IDs + coords for map rendering
+        const dest = url.searchParams.get('destination') || ''
+        const where: any = { status: 'PUBLISHED' }
+        if (dest) {
+          where.OR = [
+            { city: { contains: dest, mode: 'insensitive' } },
+            { country: { contains: dest, mode: 'insensitive' } },
+            { neighborhood: { contains: dest, mode: 'insensitive' } },
+          ]
+        }
+        const listings = await db.listing.findMany({
+          where,
+          select: {
+            id: true, title: true, slug: true, basePrice: true, currency: true,
+            lat: true, lng: true, city: true, country: true, neighborhood: true,
+            rating: true, reviewCount: true, coverImage: true, maxGuests: true, bedrooms: true, instantBook: true,
+          },
+          take: 200,
+        })
+        return NextResponse.json({ markers: listings.filter(l => l.lat && l.lng) })
+      }
       default:
         return NextResponse.json({ error: 'unknown op' }, { status: 400 })
     }
@@ -684,6 +741,193 @@ export async function POST(req: NextRequest) {
         })
         await db.notification.create({ data: { userId: me.id, type: 'SUPPORT_UPDATE', title: 'Support ticket created', body: `Ticket #${ticket.id.slice(0, 8)} — we'll respond within 24 hours.`, link: '/guest?tab=support' } })
         return NextResponse.json({ ticket })
+      }
+      case 'ai-travel-assistant': {
+        // AI travel planning using z-ai-web-dev-sdk (server-side only)
+        const { query, userPrefs } = body
+        if (!query) return NextResponse.json({ error: 'query required' }, { status: 400 })
+        try {
+          // Dynamically import z-ai-web-dev-sdk (server-side)
+          const ZAI = (await import('z-ai-web-dev-sdk')).default
+          const zai = await ZAI.create()
+          // Fetch matching listings to provide real context
+          const allListings = await db.listing.findMany({
+            where: { status: 'PUBLISHED' },
+            select: {
+              id: true, title: true, city: true, country: true, neighborhood: true,
+              basePrice: true, currency: true, maxGuests: true, bedrooms: true,
+              category: true, rating: true, reviewCount: true, coverImage: true,
+              amenities: true, instantBook: true,
+            },
+            take: 50,
+            orderBy: { rating: 'desc' },
+          })
+          const listingsContext = allListings.slice(0, 25).map(l => ({
+            id: l.id,
+            title: l.title,
+            location: `${l.neighborhood ? l.neighborhood + ', ' : ''}${l.city}, ${l.country}`,
+            pricePerNight: `$${(l.basePrice / 100).toFixed(0)}`,
+            category: l.category,
+            rating: l.rating,
+            guests: l.maxGuests,
+            bedrooms: l.bedrooms,
+            amenities: l.amenities.split(',').slice(0, 6),
+            instantBook: l.instantBook,
+          }))
+          const systemPrompt = `You are Stayora's AI travel assistant. Help travelers find the perfect stay based on their natural-language request.
+
+You have access to ${allListings.length} real listings on Stayora. Here are the top ${listingsContext.length}:
+
+${JSON.stringify(listingsContext, null, 2)}
+
+User preferences: ${JSON.stringify(userPrefs || {}, null, 2)}
+
+Respond with EXACTLY this JSON structure (no other text):
+{
+  "greeting": "Brief personalized greeting (1 sentence)",
+  "summary": "2-3 sentence summary of what you found for them",
+  "recommendations": [
+    {
+      "listingId": "<real listing id from the data above>",
+      "reason": "1-sentence personalized reason this matches"
+    }
+  ],
+  "tips": ["Optional travel tip 1", "Optional tip 2"],
+  "followups": ["Suggested follow-up question 1", "Suggested follow-up question 2"]
+}
+
+Pick at most 3 recommendations from the listings above. If the user's request doesn't match any listings, recommend the closest matches and explain why.`
+          const completion = await zai.chat.completions.create({
+            messages: [
+              { role: 'assistant', content: systemPrompt },
+              { role: 'user', content: query },
+            ],
+            thinking: { type: 'disabled' },
+          })
+          const content = completion.choices[0]?.message?.content || '{}'
+          // Strip markdown code fences if present (LLM tends to wrap JSON in ```json ... ```)
+          const cleanedContent = content
+            .replace(/^```(?:json)?\s*\n?/i, '')
+            .replace(/\n?```\s*$/i, '')
+            .trim()
+          try {
+            const parsed = JSON.parse(cleanedContent)
+            // Hydrate recommendations with full listing data
+            const hydratedRecs = await Promise.all(
+              (parsed.recommendations || []).map(async (r: any) => {
+                const listing = await db.listing.findUnique({
+                  where: { id: r.listingId },
+                  include: { photos: { where: { isCover: true }, take: 1 }, host: true },
+                })
+                return { ...r, listing }
+              })
+            )
+            return NextResponse.json({
+              ...parsed,
+              recommendations: hydratedRecs.filter((r: any) => r.listing),
+            })
+          } catch (parseErr) {
+            return NextResponse.json({
+              greeting: 'Hello!',
+              summary: content.slice(0, 500),
+              recommendations: [],
+              tips: [],
+              followups: [],
+              raw: true,
+            })
+          }
+        } catch (e: any) {
+          console.error('[AI travel assistant error]', e)
+          return NextResponse.json({ error: 'AI assistant temporarily unavailable: ' + e.message }, { status: 503 })
+        }
+      }
+      case 'create-payment-intent': {
+        // Proxies to the Stayora Payment Gateway mini-service on port 3004
+        const { amount, currency, bookingId, listingId, userId } = body
+        if (!amount) return NextResponse.json({ error: 'amount required' }, { status: 400 })
+        const r = await fetch(`http://localhost:3004/payment-intents`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: parseInt(amount),
+            currency: currency || 'usd',
+            metadata: { bookingId, listingId, userId },
+          }),
+        })
+        const intent = await r.json()
+        if (!r.ok) return NextResponse.json({ error: intent.error || 'gateway error' }, { status: r.status })
+        return NextResponse.json({ intent })
+      }
+      case 'payment-webhook': {
+        // Receives webhooks from the Stayora Payment Gateway (port 3004)
+        const event = body
+        if (event?.type === 'payment_intent.succeeded') {
+          const { id, amount, currency, metadata } = event.data?.object || {}
+          const { bookingId } = metadata || {}
+          if (bookingId) {
+            // Update payment attempt + booking status
+            await db.paymentAttempt.updateMany({
+              where: { bookingId },
+              data: { status: 'CAPTURED', providerRef: id },
+            })
+            const booking = await db.booking.findUnique({ where: { id: bookingId } })
+            if (booking && booking.status === 'PENDING') {
+              await db.booking.update({
+                where: { id: bookingId },
+                data: { status: 'CONFIRMED', confirmedAt: new Date() },
+              })
+              // Schedule payout
+              const scheduledAt = new Date(new Date(booking.checkOut).getTime() + 24 * 3600 * 1000)
+              await db.payout.create({
+                data: {
+                  hostId: booking.hostId,
+                  bookingId: booking.id,
+                  amount: booking.hostPayout,
+                  currency: booking.currency,
+                  status: 'PENDING',
+                  provider: 'BANK',
+                  scheduledAt,
+                },
+              })
+              await db.notification.create({
+                data: {
+                  userId: booking.guestId,
+                  type: 'BOOKING_CONFIRMED',
+                  title: 'Payment confirmed — your booking is live',
+                  body: `Payment of $${(amount / 100).toFixed(2)} processed successfully`,
+                  link: '/guest?tab=trips',
+                },
+              })
+              await db.notification.create({
+                data: {
+                  userId: booking.hostId,
+                  type: 'BOOKING_CONFIRMED',
+                  title: 'New booking confirmed',
+                  body: `A guest's payment has cleared — see your reservations`,
+                  link: '/host?tab=reservations',
+                },
+              })
+            }
+          }
+          return NextResponse.json({ received: true })
+        }
+        return NextResponse.json({ received: true, ignored: true })
+      }
+      case 'share-wishlist': {
+        const me = await requireAuth()
+        if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        const { wishlistId, recipientEmails } = body
+        const wishlist = await db.wishlist.findFirst({
+          where: { id: wishlistId, userId: me.id },
+        })
+        if (!wishlist) return NextResponse.json({ error: 'not found' }, { status: 404 })
+        // In production this would email recipients. For demo, generate a share token.
+        const shareToken = `${wishlistId}-${Math.random().toString(36).slice(2, 10)}`
+        await db.wishlist.update({
+          where: { id: wishlistId },
+          data: { isPrivate: false, shareToken },
+        })
+        return NextResponse.json({ shareToken, shareUrl: `/?wishlist=${shareToken}` })
       }
       default:
         return NextResponse.json({ error: 'unknown op' }, { status: 400 })

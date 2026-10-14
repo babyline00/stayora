@@ -8,16 +8,20 @@ import { SearchView } from '@/components/stayora/public/search'
 import { PropertyDetail } from '@/components/stayora/public/property-detail'
 import { ExperiencesView } from '@/components/stayora/public/experiences'
 import { ServicesView } from '@/components/stayora/public/services'
+import { DestinationView } from '@/components/stayora/public/destination'
+import { AiAssistantView } from '@/components/stayora/public/ai-assistant'
 import { GuestDashboard } from '@/components/stayora/guest/dashboard'
 import { HostDashboard } from '@/components/stayora/host/dashboard'
 import { AdminPanel } from '@/components/stayora/admin/panel'
 import { AuthModal } from '@/components/stayora/shared/auth-modal'
 import { BookingModal } from '@/components/stayora/shared/booking-modal'
+import { NewPaymentModal } from '@/components/stayora/shared/payment-modal'
 import { Toast } from '@/components/stayora/shared/toast'
 import { CreateListingWizard } from '@/components/stayora/host/create-listing-wizard'
+import { RealtimeProvider } from '@/components/stayora/shared/realtime-provider'
 
 export default function Page() {
-  const { view, user, setUser, showAuthModal, bookingModalOpen } = useAppStore()
+  const { view, user, setUser, showAuthModal, bookingModalOpen, paymentModalOpen, paymentData, selectedListingId, addRecentlyViewed } = useAppStore()
 
   // Hydrate session on mount
   useEffect(() => {
@@ -29,29 +33,51 @@ export default function Page() {
       .catch(() => {})
   }, [setUser])
 
-  return (
-    <Shell>
-      {view === 'home' && <HomeView />}
-      {view === 'search' && <SearchView />}
-      {view === 'property' && <PropertyDetail />}
-      {view === 'experiences' && <ExperiencesView />}
-      {view === 'services' && <ServicesView />}
-      {view === 'guest' && (user ? <GuestDashboard /> : <AuthRequired />)}
-      {view === 'host' && (user ? <HostDashboard /> : <AuthRequired />)}
-      {view === 'admin' && (user?.role === 'ADMIN' ? <AdminPanel /> : <AuthRequired admin />)}
-      {view === 'create-listing' && (user ? <CreateListingWizard /> : <AuthRequired />)}
+  // Track recently viewed when a property is opened
+  useEffect(() => {
+    if (view === 'property' && selectedListingId) {
+      addRecentlyViewed(selectedListingId)
+    }
+  }, [view, selectedListingId, addRecentlyViewed])
 
-      {showAuthModal && <AuthModal />}
-      {bookingModalOpen && <BookingModal />}
-      <Toast />
-    </Shell>
+  return (
+    <RealtimeProvider>
+      <Shell>
+        {view === 'home' && <HomeView />}
+        {view === 'search' && <SearchView />}
+        {view === 'property' && <PropertyDetail />}
+        {view === 'experiences' && <ExperiencesView />}
+        {view === 'services' && <ServicesView />}
+        {view === 'destination' && <DestinationView />}
+        {view === 'ai-assistant' && <AiAssistantView />}
+        {view === 'guest' && (user ? <GuestDashboard /> : <AuthRequired />)}
+        {view === 'host' && (user ? <HostDashboard /> : <AuthRequired />)}
+        {view === 'admin' && (user?.role === 'ADMIN' ? <AdminPanel /> : <AuthRequired admin />)}
+        {view === 'create-listing' && (user ? <CreateListingWizard /> : <AuthRequired />)}
+
+        {showAuthModal && <AuthModal />}
+        {bookingModalOpen && <BookingModal />}
+        {paymentModalOpen && paymentData && (
+          <NewPaymentModal
+            open={paymentModalOpen}
+            onClose={() => useAppStore.getState().closePayment()}
+            amount={paymentData.amount}
+            currency={paymentData.currency}
+            bookingId={paymentData.bookingId}
+            listingId={paymentData.listingId}
+            metadata={paymentData.metadata}
+          />
+        )}
+        <Toast />
+      </Shell>
+    </RealtimeProvider>
   )
 }
 
 function AuthRequired({ admin }: { admin?: boolean }) {
   const openAuth = useAppStore(s => s.openAuth)
   useEffect(() => {
-    openAuth('login')
+    Promise.resolve().then(() => openAuth('login'))
   }, [openAuth])
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 py-20 text-center">

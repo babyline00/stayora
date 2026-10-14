@@ -12,6 +12,7 @@ import { Calendar } from '@/components/ui/calendar'
 import { Separator } from '@/components/ui/separator'
 import { Star, MapPin, Users, Bed, Bath, Heart, Share2, ShieldCheck, Zap, Clock, ChevronLeft, Wifi, Car, Snowflake, Dumbbell, Waves, Flame, Tv, TreePalm, Mountain, Utensils, Briefcase } from 'lucide-react'
 import { formatPrice, formatRating, formatNumber, AMENITY_LABELS, CATEGORY_LABELS, CANCELLATION_LABELS, toISODate, addDays } from '@/lib/format'
+import { OpenStreetMap } from '@/components/stayora/shared/open-street-map'
 
 export function PropertyDetail() {
   const { selectedListingId, setView, openBooking, user, openAuth, filters, showToast } = useAppStore()
@@ -291,17 +292,29 @@ export function PropertyDetail() {
           {/* Map */}
           <section>
             <h2 className="mb-2 text-lg font-bold text-navy">Where you'll be</h2>
-            <div className="relative aspect-[16/8] overflow-hidden rounded-xl bg-peach-light">
-              <div className="absolute inset-0 grid place-items-center">
+            <p className="mb-3 text-sm text-muted-foreground">
+              {listing.neighborhood ? `${listing.neighborhood}, ` : ''}{listing.city}, {listing.country} — exact address shared after booking
+            </p>
+            {listing.lat && listing.lng && (
+              <OpenStreetMap
+                singleLocation={{
+                  lat: listing.lat,
+                  lng: listing.lng,
+                  label: `<div style="font-weight: 600; padding: 4px 8px;">${listing.title}</div><div style="font-size: 11px; color: #666;">${listing.neighborhood || ''} ${listing.city}</div>`,
+                }}
+                height={350}
+                zoom={13}
+              />
+            )}
+            {!listing.lat && (
+              <div className="aspect-[16/8] rounded-xl bg-peach-light grid place-items-center">
                 <div className="text-center">
                   <MapPin className="mx-auto h-8 w-8 text-orange" />
                   <p className="mt-1 text-sm font-semibold text-navy">{listing.neighborhood || listing.city}</p>
                   <p className="text-xs text-muted-foreground">{listing.city}, {listing.country}</p>
-                  <p className="mt-2 text-[10px] text-muted-foreground">Exact location shared after booking</p>
                 </div>
               </div>
-              <div className="absolute inset-0 bg-grid-navy/[0.04] [background-size:32px_32px]" />
-            </div>
+            )}
           </section>
 
           <Separator />

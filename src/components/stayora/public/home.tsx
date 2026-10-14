@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/useAppStore'
-import { fetchListings, searchListings } from '@/lib/api'
+import { fetchListings, searchListings, fetchRecentlyViewed } from '@/lib/api'
 import { PropertyCard } from '@/components/stayora/shared/property-card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Calendar, MapPin, Users, ArrowRight, Sparkles, ShieldCheck, Globe, Heart, Star, TrendingUp, Crown, Compass, Building2, Home, Trees, Ship, Tent } from 'lucide-react'
+import { Calendar, MapPin, Users, ArrowRight, Sparkles, ShieldCheck, Globe, Heart, Star, TrendingUp, Crown, Compass, Building2, Home, Trees, Ship, Tent, Clock } from 'lucide-react'
 
 const CATEGORIES = [
   { id: 'VILLA', label: 'Villas', icon: Building2 },
@@ -30,10 +30,11 @@ const TRENDING_DESTINATIONS = [
 ]
 
 export function HomeView() {
-  const { filters, setFilters, setView, openAuth, user } = useAppStore()
+  const { filters, setFilters, setView, openAuth, user, recentlyViewed, selectCity } = useAppStore()
   const [featured, setFeatured] = useState<any[]>([])
   const [trending, setTrending] = useState<any[]>([])
   const [recent, setRecent] = useState<any[]>([])
+  const [recentlyViewedListings, setRecentlyViewedListings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -48,6 +49,15 @@ export function HomeView() {
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [])
+
+  // Fetch recently viewed listings (when the list changes)
+  useEffect(() => {
+    if (recentlyViewed.length === 0) {
+      Promise.resolve().then(() => setRecentlyViewedListings([]))
+      return
+    }
+    fetchRecentlyViewed(recentlyViewed).then(d => setRecentlyViewedListings(d.listings || [])).catch(() => {})
+  }, [recentlyViewed])
 
   const submitSearch = () => {
     setView('search')
@@ -202,10 +212,7 @@ export function HomeView() {
             {TRENDING_DESTINATIONS.map(d => (
               <button
                 key={d.city}
-                onClick={() => {
-                  setFilters({ destination: d.city })
-                  setView('search')
-                }}
+                onClick={() => selectCity(d.city)}
                 className="group relative aspect-square overflow-hidden rounded-2xl bg-navy text-left"
               >
                 <img src={d.img} alt={d.city} className="absolute inset-0 h-full w-full object-cover opacity-90 transition group-hover:scale-105 group-hover:opacity-100" />
@@ -237,6 +244,73 @@ export function HomeView() {
           ) : (
             recent.slice(0, 4).map(l => <PropertyCard key={l.id} listing={l} />)
           )}
+        </div>
+      </section>
+
+      {/* Recently viewed */}
+      {recentlyViewedListings.length > 0 && (
+        <section className="bg-peach-light/30 py-12">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="mb-6 flex items-end justify-between">
+              <div>
+                <h2 className="flex items-center gap-2 text-2xl font-bold text-navy">
+                  <Clock className="h-6 w-6 text-orange" /> Recently viewed
+                </h2>
+                <p className="text-sm text-muted-foreground">Pick up where you left off.</p>
+              </div>
+              <button
+                onClick={() => useAppStore.getState().clearRecentlyViewed()}
+                className="text-xs text-muted-foreground hover:text-navy"
+              >
+                Clear all
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {recentlyViewedListings.slice(0, 4).map(l => <PropertyCard key={l.id} listing={l} />)}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* AI assistant CTA */}
+      <section className="bg-navy py-12 text-white">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="grid items-center gap-6 md:grid-cols-2">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-orange/20 px-3 py-1 text-sm">
+                <Sparkles className="h-4 w-4 text-orange" /> New
+              </div>
+              <h2 className="text-3xl font-bold">Meet your AI travel assistant</h2>
+              <p className="mt-2 text-white/80">
+                Describe your dream trip in plain English — "two weeks in Portugal, beach + city, under $200/night" — and our AI searches all of Stayora to recommend the perfect stays.
+              </p>
+              <div className="mt-4 flex gap-3">
+                <Button onClick={() => setView('ai-assistant')} className="rounded-full bg-orange text-white hover:bg-orange/90">
+                  <Sparkles className="mr-2 h-4 w-4" /> Try the assistant
+                </Button>
+                <Button variant="outline" onClick={() => setView('search')} className="rounded-full border-white/30 text-white hover:bg-white/10">
+                  Browse stays
+                </Button>
+              </div>
+            </div>
+            <div className="rounded-2xl bg-white/10 p-5 backdrop-blur">
+              <div className="mb-3 flex items-center gap-2">
+                <div className="grid h-8 w-8 place-items-center rounded-full bg-orange text-white"><Sparkles className="h-4 w-4" /></div>
+                <div>
+                  <p className="text-sm font-semibold">Stayora AI</p>
+                  <p className="text-[10px] text-white/60">Travel planning assistant</p>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="ml-auto w-fit max-w-[85%] rounded-2xl bg-orange px-3 py-2 text-white">
+                  Find me a romantic cabin for two near a beach under $200/night
+                </div>
+                <div className="max-w-[85%] rounded-2xl bg-white/15 px-3 py-2">
+                  I found 3 stays that match — a beachfront cabin in Bali at $184/night (4.9★), a lakeside A-frame in Cape Town at $176/night (4.8★), and a private cabana in Tulum at $192/night (4.7★). All have private bathrooms, sea views, and free cancellation.
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

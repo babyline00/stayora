@@ -13,6 +13,8 @@ export type ViewName =
   | 'host'
   | 'admin'
   | 'create-listing'
+  | 'destination'
+  | 'ai-assistant'
 
 export type GuestTab = 'overview' | 'trips' | 'wishlists' | 'messages' | 'reviews' | 'payments' | 'notifications' | 'profile' | 'support'
 export type HostTab = 'overview' | 'listings' | 'calendar' | 'reservations' | 'inbox' | 'earnings' | 'analytics' | 'reviews' | 'cohosts' | 'create'
@@ -82,6 +84,22 @@ interface AppState {
   sidebarOpen: boolean
   toast: { id: string; title: string; description?: string; variant?: 'default' | 'success' | 'error' } | null
 
+  // Recently viewed
+  recentlyViewed: string[]
+
+  // Selected destination city (for destination view)
+  selectedCity: string | null
+
+  // Payment modal
+  paymentModalOpen: boolean
+  paymentData: {
+    amount: number
+    currency?: string
+    bookingId?: string
+    listingId?: string
+    metadata?: { listingTitle?: string; checkIn?: string; checkOut?: string; nights?: number }
+  } | null
+
   // Actions
   setView: (view: ViewName) => void
   setGuestTab: (tab: GuestTab) => void
@@ -93,6 +111,7 @@ interface AppState {
   selectExperience: (id: string | null) => void
   selectService: (id: string | null) => void
   selectUser: (id: string | null) => void
+  selectCity: (city: string | null) => void
 
   setUser: (user: AppUser | null) => void
   openAuth: (mode?: 'login' | 'register') => void
@@ -104,9 +123,15 @@ interface AppState {
   openBooking: (listingId: string, dates?: { checkIn?: string; checkOut?: string }, guests?: { adults: number; children: number; infants: number; pets: number }) => void
   closeBooking: () => void
 
+  openPayment: (data: { amount: number; currency?: string; bookingId?: string; listingId?: string; metadata?: { listingTitle?: string; checkIn?: string; checkOut?: string; nights?: number } }) => void
+  closePayment: () => void
+
   setSidebarOpen: (open: boolean) => void
   showToast: (title: string, description?: string, variant?: 'default' | 'success' | 'error') => void
   clearToast: () => void
+
+  addRecentlyViewed: (listingId: string) => void
+  clearRecentlyViewed: () => void
 }
 
 const DEFAULT_FILTERS: SearchFilters = {
@@ -150,6 +175,11 @@ export const useAppStore = create<AppState>()(
       sidebarOpen: true,
       toast: null,
 
+      recentlyViewed: [],
+      selectedCity: null,
+      paymentModalOpen: false,
+      paymentData: null,
+
       setView: (view) => set({ view }),
       setGuestTab: (guestTab) => set({ guestTab }),
       setHostTab: (hostTab) => set({ hostTab }),
@@ -160,6 +190,7 @@ export const useAppStore = create<AppState>()(
       selectExperience: (selectedExperienceId) => set({ selectedExperienceId, view: 'experiences' }),
       selectService: (selectedServiceId) => set({ selectedServiceId, view: 'services' }),
       selectUser: (selectedUserId) => set({ selectedUserId }),
+      selectCity: (selectedCity) => set({ selectedCity, view: 'destination' }),
 
       setUser: (user) => set({ user }),
       openAuth: (mode = 'login') => set({ showAuthModal: true, authMode: mode }),
@@ -177,6 +208,14 @@ export const useAppStore = create<AppState>()(
         }),
       closeBooking: () => set({ bookingModalOpen: false }),
 
+      openPayment: (paymentData) => set({ paymentModalOpen: true, paymentData }),
+      closePayment: () => set({ paymentModalOpen: false, paymentData: null }),
+
+      addRecentlyViewed: (listingId) => set((state) => ({
+        recentlyViewed: [listingId, ...state.recentlyViewed.filter(id => id !== listingId)].slice(0, 12),
+      })),
+      clearRecentlyViewed: () => set({ recentlyViewed: [] }),
+
       setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
       showToast: (title, description, variant = 'default') => {
         const id = `toast-${++toastCounter}`
@@ -192,6 +231,7 @@ export const useAppStore = create<AppState>()(
         user: state.user,
         filters: state.filters,
         view: state.view,
+        recentlyViewed: state.recentlyViewed,
       }),
     }
   )

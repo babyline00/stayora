@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useAppStore } from '@/store/useAppStore'
-import { searchListings, fetchDestinations } from '@/lib/api'
+import { searchListings, fetchDestinations, fetchMapMarkers } from '@/lib/api'
 import { PropertyCard } from '@/components/stayora/shared/property-card'
+import { OpenStreetMap } from '@/components/stayora/shared/open-street-map'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,17 +12,19 @@ import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Star, SlidersHorizontal, X, MapPin, Compass } from 'lucide-react'
-import { AMENITY_LABELS, CATEGORY_LABELS, formatNumber } from '@/lib/format'
+import { Star, SlidersHorizontal, X, MapPin, Compass, Map as MapIcon, LayoutGrid } from 'lucide-react'
+import { AMENITY_LABELS, CATEGORY_LABELS, formatNumber, formatPrice } from '@/lib/format'
 
 const ALL_AMENITIES = Object.keys(AMENITY_LABELS)
 const ALL_CATEGORIES = Object.keys(CATEGORY_LABELS)
 
 export function SearchView() {
-  const { filters, setFilters, resetFilters } = useAppStore()
+  const { filters, setFilters, resetFilters, selectListing } = useAppStore()
   const [listings, setListings] = useState<any[]>([])
+  const [markers, setMarkers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showFilters, setShowFilters] = useState(true)
+  const [showMap, setShowMap] = useState(false)
   const [destinations, setDestinations] = useState<any[]>([])
 
   // Convert filters to query params
@@ -53,6 +56,11 @@ export function SearchView() {
     }, 200)
     return () => { cancelled = true; clearTimeout(t) }
   }, [queryParams])
+
+  // Fetch map markers when destination changes
+  useEffect(() => {
+    fetchMapMarkers(filters.destination).then(d => setMarkers(d.markers || [])).catch(() => {})
+  }, [filters.destination])
 
   useEffect(() => { fetchDestinations().then(d => setDestinations(d.destinations || [])).catch(() => {}) }, [])
 
@@ -94,6 +102,15 @@ export function SearchView() {
             <option value="reviews">Most reviewed</option>
             <option value="recent">Recently added</option>
           </select>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowMap(!showMap)}
+            className={`rounded-full ${showMap ? 'bg-navy text-white' : ''}`}
+          >
+            {showMap ? <LayoutGrid className="mr-2 h-4 w-4" /> : <MapIcon className="mr-2 h-4 w-4" />}
+            {showMap ? 'List' : 'Map'}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -269,23 +286,61 @@ export function SearchView() {
           </aside>
         )}
 
-        {/* Results grid */}
-        <div>
-          {loading ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 9 }, (_, i) => <Skeleton key={i} className="aspect-[4/3] w-full rounded-xl" />)}
-            </div>
-          ) : listings.length === 0 ? (
-            <div className="grid place-items-center rounded-2xl border border-dashed border-border py-20 text-center">
-              <Compass className="mb-3 h-10 w-10 text-muted-foreground" />
-              <h3 className="text-lg font-semibold text-navy">No stays match your filters</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Try widening your search or removing filters.</p>
-              <Button onClick={resetFilters} variant="outline" className="mt-4 rounded-full">Reset filters</Button>
-            </div>
+        {/* Results area */}
+        <div className={showMap ? 'lg:grid lg:grid-cols-2 lg:gap-4' : ''}>
+          {showMap ? (
+            <>
+              <div className="mb-4 lg:mb-0 lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto lg:stayora-scroll lg:pr-2">
+                {loading ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="aspect-[4/3] w-full rounded-xl" />)}
+                  </div>
+                ) : listings.length === 0 ? (
+                  <div className="grid place-items-center rounded-2xl border border-dashed border-border py-20 text-center">
+                    <Compass className="mb-3 h-10 w-10 text-muted-foreground" />
+                    <h3 className="text-lg font-semibold text-navy">No stays match your filters</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">Try widening your search or removing filters.</p>
+                    <Button onClick={resetFilters} variant="outline" className="mt-4 rounded-full">Reset filters</Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {listings.map(l => <PropertyCard key={l.id} listing={l} />)}
+                  </div>
+                )}
+              </div>
+              <div className="lg:sticky lg:top-20 lg:h-[calc(100vh-9rem)]">
+                <OpenStreetMap
+                  markers={markers.map(m => ({
+                    id: m.id,
+                    lat: m.lat,
+                    lng: m.lng,
+                    title: m.title,
+                    price: formatPrice(m.basePrice).replace('.00', ''),
+                    onClick: (id) => selectListing(id),
+                  }))}
+                  height="100%"
+                />
+              </div>
+            </>
           ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {listings.map(l => <PropertyCard key={l.id} listing={l} />)}
-            </div>
+            <>
+              {loading ? (
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {Array.from({ length: 9 }, (_, i) => <Skeleton key={i} className="aspect-[4/3] w-full rounded-xl" />)}
+                </div>
+              ) : listings.length === 0 ? (
+                <div className="grid place-items-center rounded-2xl border border-dashed border-border py-20 text-center">
+                  <Compass className="mb-3 h-10 w-10 text-muted-foreground" />
+                  <h3 className="text-lg font-semibold text-navy">No stays match your filters</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">Try widening your search or removing filters.</p>
+                  <Button onClick={resetFilters} variant="outline" className="mt-4 rounded-full">Reset filters</Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {listings.map(l => <PropertyCard key={l.id} listing={l} />)}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
