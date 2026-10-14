@@ -15,6 +15,7 @@ export type ViewName =
   | 'create-listing'
   | 'destination'
   | 'ai-assistant'
+  | 'host-profile'
 
 export type GuestTab = 'overview' | 'trips' | 'wishlists' | 'messages' | 'reviews' | 'payments' | 'notifications' | 'profile' | 'support'
 export type HostTab = 'overview' | 'listings' | 'calendar' | 'reservations' | 'inbox' | 'earnings' | 'analytics' | 'reviews' | 'cohosts' | 'create'
@@ -90,6 +91,9 @@ interface AppState {
   // Selected destination city (for destination view)
   selectedCity: string | null
 
+  // Selected host ID (for host profile view)
+  selectedHostId: string | null
+
   // Payment modal
   paymentModalOpen: boolean
   paymentData: {
@@ -112,6 +116,7 @@ interface AppState {
   selectService: (id: string | null) => void
   selectUser: (id: string | null) => void
   selectCity: (city: string | null) => void
+  selectHost: (hostId: string | null) => void
 
   setUser: (user: AppUser | null) => void
   openAuth: (mode?: 'login' | 'register') => void
@@ -177,6 +182,7 @@ export const useAppStore = create<AppState>()(
 
       recentlyViewed: [],
       selectedCity: null,
+      selectedHostId: null,
       paymentModalOpen: false,
       paymentData: null,
 
@@ -191,6 +197,7 @@ export const useAppStore = create<AppState>()(
       selectService: (selectedServiceId) => set({ selectedServiceId, view: 'services' }),
       selectUser: (selectedUserId) => set({ selectedUserId }),
       selectCity: (selectedCity) => set({ selectedCity, view: 'destination' }),
+      selectHost: (selectedHostId) => set({ selectedHostId, view: 'host-profile' }),
 
       setUser: (user) => set({ user }),
       openAuth: (mode = 'login') => set({ showAuthModal: true, authMode: mode }),

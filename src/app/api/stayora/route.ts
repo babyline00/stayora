@@ -305,7 +305,13 @@ export async function GET(req: NextRequest) {
         })
         const bookings = await db.booking.findMany({
           where: { hostId: me.id },
-          include: { listing: true, guest: true, payout: true },
+          include: {
+            listing: true,
+            guest: true,
+            payout: true,
+            // Include reviews so the host ReviewsTab can show + respond to them
+            reviews: { include: { author: true } },
+          },
           orderBy: { checkIn: 'desc' },
           take: 100,
         })
@@ -510,6 +516,117 @@ export async function GET(req: NextRequest) {
         if (!me) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
         const categories = await db.propertyCategory.findMany({ orderBy: { sortOrder: 'asc' } })
         return NextResponse.json({ categories })
+      }
+      // -------- Host public profile --------
+      case 'host-profile': {
+        const hostId = url.searchParams.get('id') || ''
+        if (!hostId) return NextResponse.json({ error: 'id required' }, { status: 400 })
+        const host = await db.user.findUnique({
+          where: { id: hostId },
+          include: {
+            listings: {
+              where: { status: 'PUBLISHED' },
+              include: { photos: { where: { isCover: true }, take: 1 } },
+              orderBy: { rating: 'desc' },
+              take: 20,
+            },
+            reviewsReceived: {
+              where: { status: 'PUBLISHED' },
+              include: { author: true, listing: { select: { title: true, city: true, country: true } } },
+              orderBy: { createdAt: 'desc' },
+              take: 20,
+            },
+          },
+        })
+        if (!host || (host.role !== 'HOST' && host.role !== 'ADMIN')) {
+          return NextResponse.json({ error: 'host not found' }, { status: 404 })
+        }
+        // Aggregate rating
+        const reviews = host.reviewsReceived || []
+        const avgRating = reviews.length ? reviews.reduce((s: number, r: any) => s + r.rating, 0) / reviews.length : 0
+        const ratingCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+        for (const r of reviews) ratingCounts[r.rating] = (ratingCounts[r.rating] || 0) + 1
+        return NextResponse.json({
+          host: {
+            id: host.id,
+            name: host.name,
+            avatarUrl: host.avatarUrl,
+            bio: host.bio,
+            country: host.country,
+            isVerified: host.isVerified,
+            isSuperhost: host.isSuperhost,
+            responseRate: host.responseRate,
+            responseTimeMins: host.responseTimeMins,
+            createdAt: host.createdAt,
+          },
+          listings: host.listings,
+          reviews,
+          stats: {
+            totalListings: host.listings.length,
+            totalReviews: reviews.length,
+            avgRating: Math.round(avgRating * 10) / 10,
+            ratingCounts,
+          },
+        })
+      }
+      // -------- Saved searches --------
+      case 'saved-searches': {
+        const me = await requireAuth()
+        if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        const searches = await db.savedSearch.findMany({
+          where: { userId: me.id },
+          orderBy: { createdAt: 'desc' },
+        })
+        return NextResponse.json({ searches })
+      }
+      // -------- Admin coupons --------
+      case 'admin-coupons': {
+        const me = await requireAuth(['ADMIN'])
+        if (!me) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+        const coupons = await db.coupon.findMany({ orderBy: { createdAt: 'desc' } })
+        return NextResponse.json({ coupons })
+      }
+      // -------- Email templates --------
+      case 'email-templates': {
+        const me = await requireAuth(['ADMIN'])
+        if (!me) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+        const templates = await db.emailTemplate.findMany({ orderBy: { key: 'asc' } })
+        return NextResponse.json({ templates })
+      }
+      case 'email-template': {
+        const me = await requireAuth(['ADMIN'])
+        if (!me) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+        const key = url.searchParams.get('key') || ''
+        const template = await db.emailTemplate.findUnique({ where: { key } })
+        if (!template) return NextResponse.json({ error: 'not found' }, { status: 404 })
+        return NextResponse.json({ template })
+      }
+      // -------- Listing quality score --------
+      case 'listing-quality': {
+        const me = await requireAuth()
+        if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        const id = url.searchParams.get('id') || ''
+        const listing = await db.listing.findUnique({
+          where: { id },
+          include: { photos: true, rooms: true },
+        })
+        if (!listing) return NextResponse.json({ error: 'not found' }, { status: 404 })
+        // Quality score calculation (max 100)
+        const checks: { key: string; label: string; weight: number; passed: boolean; reason?: string }[] = []
+        checks.push({ key: 'title', label: 'Title (min 5 chars)', weight: 10, passed: (listing.title?.length || 0) >= 5 })
+        checks.push({ key: 'description', label: 'Description (min 100 chars)', weight: 15, passed: (listing.description?.length || 0) >= 100 })
+        checks.push({ key: 'photos', label: 'Photos (min 5)', weight: 20, passed: listing.photos.length >= 5, reason: `${listing.photos.length}/5` })
+        checks.push({ key: 'coverImage', label: 'Cover image set', weight: 5, passed: !!listing.coverImage })
+        checks.push({ key: 'amenities', label: 'Amenities (min 5)', weight: 15, passed: (listing.amenities?.split(',').filter(Boolean).length || 0) >= 5 })
+        checks.push({ key: 'price', label: 'Base price set', weight: 10, passed: listing.basePrice > 0 })
+        checks.push({ key: 'location', label: 'Coordinates set', weight: 10, passed: !!listing.lat && !!listing.lng })
+        checks.push({ key: 'houseRules', label: 'House rules configured', weight: 5, passed: listing.allowsPets !== undefined })
+        checks.push({ key: 'cancellation', label: 'Cancellation policy', weight: 5, passed: !!listing.cancellationPolicy })
+        checks.push({ key: 'checkin', label: 'Check-in/out times', weight: 5, passed: !!listing.checkInTime && !!listing.checkOutTime })
+        const totalWeight = checks.reduce((s, c) => s + c.weight, 0)
+        const passedWeight = checks.filter(c => c.passed).reduce((s, c) => s + c.weight, 0)
+        const score = Math.round((passedWeight / totalWeight) * 100)
+        return NextResponse.json({ score, checks, totalWeight, passedWeight })
       }
       default:
         return NextResponse.json({ error: 'unknown op' }, { status: 400 })
@@ -1128,6 +1245,135 @@ Pick at most 3 recommendations from the listings above. If the user's request do
             metadata: JSON.stringify({ ids }),
             ip: '127.0.0.1',
           },
+        })
+        return NextResponse.json({ ok: true })
+      }
+      // ============================================================
+      // REVIEW REPLIES (host responds to guest review)
+      // ============================================================
+      case 'review-reply': {
+        const me = await requireAuth(['HOST', 'ADMIN'])
+        if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        const { reviewId, reply } = body
+        if (!reviewId || !reply) return NextResponse.json({ error: 'reviewId and reply required' }, { status: 400 })
+        const review = await db.review.findUnique({ where: { id: reviewId } })
+        if (!review) return NextResponse.json({ error: 'review not found' }, { status: 404 })
+        if (review.subjectId !== me.id) return NextResponse.json({ error: 'only the reviewed host can reply' }, { status: 403 })
+        const updated = await db.review.update({
+          where: { id: reviewId },
+          data: { hostReply: reply, hostReplyAt: new Date() },
+        })
+        // Notify the guest that their host replied
+        await db.notification.create({
+          data: {
+            userId: review.authorId,
+            type: 'REVIEW_REPLY',
+            title: `${me.name} replied to your review`,
+            body: reply.slice(0, 80),
+            link: '/guest?tab=reviews',
+          },
+        })
+        return NextResponse.json({ review: updated })
+      }
+      // ============================================================
+      // SAVED SEARCHES
+      // ============================================================
+      case 'create-saved-search': {
+        const me = await requireAuth()
+        if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        const { name, filters, notifyOnMatch } = body
+        if (!name || !filters) return NextResponse.json({ error: 'name and filters required' }, { status: 400 })
+        const search = await db.savedSearch.create({
+          data: {
+            userId: me.id,
+            name,
+            filters: JSON.stringify(filters),
+            notifyOnMatch: notifyOnMatch !== false,
+          },
+        })
+        return NextResponse.json({ search })
+      }
+      case 'delete-saved-search': {
+        const me = await requireAuth()
+        if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        const { id } = body
+        const search = await db.savedSearch.findUnique({ where: { id } })
+        if (!search || search.userId !== me.id) {
+          return NextResponse.json({ error: 'not found or forbidden' }, { status: 404 })
+        }
+        await db.savedSearch.delete({ where: { id } })
+        return NextResponse.json({ ok: true })
+      }
+      // ============================================================
+      // ADMIN COUPON CRUD
+      // ============================================================
+      case 'admin-coupon-upsert': {
+        const me = await requireAuth(['ADMIN'])
+        if (!me) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+        const { id, ...data } = body
+        // Sanitize
+        const safeData: any = { ...data }
+        if (safeData.validFrom) safeData.validFrom = new Date(safeData.validFrom)
+        if (safeData.validTo) safeData.validTo = new Date(safeData.validTo)
+        delete safeData.createdAt
+        try {
+          const result = id
+            ? await db.coupon.update({ where: { id }, data: safeData })
+            : await db.coupon.create({ data: safeData })
+          await db.auditLog.create({
+            data: {
+              actorId: me.id,
+              action: `COUPON_${id ? 'UPDATE' : 'CREATE'}`,
+              resource: 'Coupon',
+              resourceId: result.id,
+              metadata: JSON.stringify({ code: result.code }),
+              ip: '127.0.0.1',
+            },
+          })
+          return NextResponse.json({ coupon: result })
+        } catch (e: any) {
+          return NextResponse.json({ error: e.message || 'upsert failed' }, { status: 400 })
+        }
+      }
+      case 'admin-coupon-delete': {
+        const me = await requireAuth(['ADMIN'])
+        if (!me) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+        const { id } = body
+        const coupon = await db.coupon.delete({ where: { id } })
+        await db.auditLog.create({
+          data: { actorId: me.id, action: 'COUPON_DELETE', resource: 'Coupon', resourceId: id, metadata: JSON.stringify({ code: coupon.code }), ip: '127.0.0.1' },
+        })
+        return NextResponse.json({ ok: true })
+      }
+      // ============================================================
+      // EMAIL TEMPLATE CRUD
+      // ============================================================
+      case 'admin-email-template-upsert': {
+        const me = await requireAuth(['ADMIN'])
+        if (!me) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+        const { id, ...data } = body
+        const safeData: any = { ...data }
+        delete safeData.createdAt
+        delete safeData.updatedAt
+        try {
+          const result = id
+            ? await db.emailTemplate.update({ where: { id }, data: safeData })
+            : await db.emailTemplate.create({ data: safeData })
+          await db.auditLog.create({
+            data: { actorId: me.id, action: `EMAIL_${id ? 'UPDATE' : 'CREATE'}`, resource: 'EmailTemplate', resourceId: result.id, metadata: JSON.stringify({ key: result.key }), ip: '127.0.0.1' },
+          })
+          return NextResponse.json({ template: result })
+        } catch (e: any) {
+          return NextResponse.json({ error: e.message || 'upsert failed' }, { status: 400 })
+        }
+      }
+      case 'admin-email-template-delete': {
+        const me = await requireAuth(['ADMIN'])
+        if (!me) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+        const { id } = body
+        await db.emailTemplate.delete({ where: { id } })
+        await db.auditLog.create({
+          data: { actorId: me.id, action: 'EMAIL_DELETE', resource: 'EmailTemplate', resourceId: id, ip: '127.0.0.1' },
         })
         return NextResponse.json({ ok: true })
       }

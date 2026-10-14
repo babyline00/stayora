@@ -457,11 +457,36 @@ model Review {
   photoUrls   String?
   status      String   @default("PUBLISHED") // DRAFT | PUBLISHED | HIDDEN | REMOVED
   moderationStatus String @default("OK") // OK | REPORTED | UNDER_REVIEW
+  // Host reply (for two-way review workflow)
+  hostReply   String?
+  hostReplyAt DateTime?
   createdAt   DateTime @default(now())
   author      User     @relation("ReviewAuthor", fields: [authorId], references: [id])
   subject     User     @relation("ReviewSubject", fields: [subjectId], references: [id])
   listing     Listing? @relation(fields: [listingId], references: [id])
   booking     Booking? @relation(fields: [bookingId], references: [id])
+}
+
+model SavedSearch {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  filters     String   // JSON-encoded filters object
+  lastMatchCount Int   @default(0)
+  lastCheckedAt DateTime?
+  notifyOnMatch Boolean @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  key         String   @unique // booking-confirmation, message-received, etc.
+  subject     String
+  body        String   // plain text or markdown
+  variables   String?  // JSON array of variable names
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // ============================================================

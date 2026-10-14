@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useAppStore } from '@/store/useAppStore'
-import { searchListings, fetchDestinations, fetchMapMarkers } from '@/lib/api'
+import { searchListings, fetchDestinations, fetchMapMarkers, createSavedSearch } from '@/lib/api'
 import { useAmenities, useCategories } from '@/hooks/use-content'
 import { resolveIcon } from '@/lib/icon-resolver'
 import { PropertyCard } from '@/components/stayora/shared/property-card'
@@ -14,11 +14,11 @@ import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Star, SlidersHorizontal, X, MapPin, Compass, Map as MapIcon, LayoutGrid, Loader2 } from 'lucide-react'
+import { Star, SlidersHorizontal, X, MapPin, Compass, Map as MapIcon, LayoutGrid, Loader2, Save } from 'lucide-react'
 import { formatNumber, formatPrice } from '@/lib/format'
 
 export function SearchView() {
-  const { filters, setFilters, resetFilters, selectListing } = useAppStore()
+  const { filters, setFilters, resetFilters, selectListing, user, openAuth, showToast } = useAppStore()
   const [listings, setListings] = useState<any[]>([])
   const [markers, setMarkers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -137,6 +137,21 @@ export function SearchView() {
             <option value="reviews">Most reviewed</option>
             <option value="recent">Recently added</option>
           </select>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              if (!user) { openAuth('login'); return }
+              try {
+                const name = filters.destination || `${filters.adults + filters.children} guests · ${filters.sortBy}`
+                await createSavedSearch({ name, filters, notifyOnMatch: true })
+                showToast('Search saved', 'You\'ll be notified when matching listings appear.', 'success')
+              } catch (e: any) { showToast('Could not save search', e.message, 'error') }
+            }}
+            className="rounded-full"
+          >
+            <Save className="mr-2 h-4 w-4" /> Save search
+          </Button>
           <Button
             variant="outline"
             size="sm"

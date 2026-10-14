@@ -230,13 +230,17 @@ export function PropertyDetail() {
                   <AvatarFallback className="bg-navy text-white">{host.name.split(' ').map((p: string) => p[0]).slice(0, 2).join('')}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <p className="font-semibold text-navy">Hosted by {host.name}</p>
+                  <p className="font-semibold text-navy">
+                    Hosted by{' '}
+                    <button onClick={() => useAppStore.getState().selectHost(host.id)} className="text-orange hover:underline">
+                      {host.name}
+                    </button>
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {host.isSuperhost ? 'Superhost · ' : ''}Joined {new Date(host.createdAt).getFullYear()} · Response rate {host.responseRate}%
                   </p>
                 </div>
                 <Button variant="outline" size="sm" className="rounded-full" onClick={() => user ? (async () => {
-                  // Open conversation with host
                   const { sendMessage } = await import('@/lib/api')
                   try {
                     const r = await sendMessage({ recipientId: host.id, body: `Hi! I'm interested in ${listing.title}.` })

@@ -10,6 +10,7 @@ import { ExperiencesView } from '@/components/stayora/public/experiences'
 import { ServicesView } from '@/components/stayora/public/services'
 import { DestinationView } from '@/components/stayora/public/destination'
 import { AiAssistantView } from '@/components/stayora/public/ai-assistant'
+import { HostProfileView } from '@/components/stayora/public/host-profile'
 import { GuestDashboard } from '@/components/stayora/guest/dashboard'
 import { HostDashboard } from '@/components/stayora/host/dashboard'
 import { AdminPanel } from '@/components/stayora/admin/panel'
@@ -50,6 +51,7 @@ export default function Page() {
         {view === 'services' && <ServicesView />}
         {view === 'destination' && <DestinationView />}
         {view === 'ai-assistant' && <AiAssistantView />}
+        {view === 'host-profile' && <HostProfileView />}
         {view === 'guest' && (user ? <GuestDashboard /> : <AuthRequired />)}
         {view === 'host' && (user ? <HostDashboard /> : <AuthRequired />)}
         {view === 'admin' && (user?.role === 'ADMIN' ? <AdminPanel /> : <AuthRequired admin />)}

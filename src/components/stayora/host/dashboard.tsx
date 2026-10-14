@@ -1346,7 +1346,14 @@ function ReviewsTab({ bookings, loading }: any) {
     }
     setResponding(reviewId)
     try {
-      await new Promise(r => setTimeout(r, 300))
+      const { replyToReview } = await import('@/lib/api')
+      await replyToReview(reviewId, responseBody.trim())
+      // Update local state so the UI reflects the reply immediately
+      const target = allReviews.find((r: any) => r.id === reviewId)
+      if (target) {
+        target.hostReply = responseBody.trim()
+        target.hostReplyAt = new Date().toISOString()
+      }
       showToast('Response published', 'Your reply is now visible to guests.', 'success')
       setResponding(null)
       setResponseBody('')
@@ -1425,6 +1432,12 @@ function ReviewsTab({ bookings, loading }: any) {
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => { setResponding(null); setResponseBody('') }} className="rounded-full">Cancel</Button>
                         </div>
+                      </div>
+                    ) : r.hostReply ? (
+                      <div className="mt-3 rounded-lg bg-peach-light/60 p-3">
+                        <p className="mb-1 text-xs font-semibold text-navy">Your response:</p>
+                        <p className="text-sm text-foreground">{r.hostReply}</p>
+                        {r.hostReplyAt && <p className="mt-1 text-[10px] text-muted-foreground">{formatRelativeDate(r.hostReplyAt)}</p>}
                       </div>
                     ) : (
                       <Button size="sm" variant="outline" onClick={() => { setResponding(r.id); setResponseBody('') }} className="mt-3 rounded-full">

@@ -193,3 +193,28 @@ export const deleteContent = (table: 'amenity' | 'destination' | 'wizardStep' | 
   postJSON('admin-content-delete', { table, id })
 export const reorderContent = (table: 'amenity' | 'destination' | 'wizardStep' | 'propertyCategory', ids: string[]) =>
   postJSON('admin-content-reorder', { table, ids })
+
+// ============================================================
+// HOST PROFILE + REVIEWS + SAVED SEARCHES + COUPONS + EMAIL TEMPLATES
+// ============================================================
+export const fetchHostProfile = (id: string) => getJSON('host-profile', { id })
+export const replyToReview = (reviewId: string, reply: string) =>
+  postJSON('review-reply', { reviewId, reply })
+
+export const fetchSavedSearches = () => getJSON('saved-searches')
+export const createSavedSearch = (data: { name: string; filters: any; notifyOnMatch?: boolean }) =>
+  postJSON('create-saved-search', data)
+export const deleteSavedSearch = (id: string) => postJSON('delete-saved-search', { id })
+
+export const fetchListingQuality = (id: string) => getJSON('listing-quality', { id })
+
+// Admin coupon management
+export const fetchAdminCoupons = () => getJSON('admin-coupons')
+export const upsertCoupon = (data: any, id?: string) => postJSON('admin-coupon-upsert', { id, ...data })
+export const deleteCoupon = (id: string) => postJSON('admin-coupon-delete', { id })
+
+// Admin email template management
+export const fetchEmailTemplates = () => getJSON('email-templates')
+export const fetchEmailTemplate = (key: string) => getJSON('email-template', { key })
+export const upsertEmailTemplate = (data: any, id?: string) => postJSON('admin-email-template-upsert', { id, ...data })
+export const deleteEmailTemplate = (id: string) => postJSON('admin-email-template-delete', { id })
