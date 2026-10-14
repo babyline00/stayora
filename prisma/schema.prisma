@@ -1,0 +1,617 @@
+// Stayora — Complete marketplace schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// IDENTITY
+// ============================================================
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  passwordHash    String
+  name            String
+  avatarUrl       String?
+  bio             String?
+  phone           String?
+  role            String   @default("GUEST") // GUEST | HOST | ADMIN
+  languages       String   @default("en") // comma separated
+  currency        String   @default("USD")
+  country         String?
+  isVerified      Boolean  @default(false)
+  isSuperhost     Boolean  @default(false)
+  responseRate    Int      @default(100) // percentage
+  responseTimeMins Int     @default(60)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  sessions           Session[]
+  listings           Listing[]
+  bookingsAsGuest    Booking[]     @relation("BookingGuest")
+  bookingsAsHost     Booking[]     @relation("BookingHost")
+  reviewsGiven       Review[]      @relation("ReviewAuthor")
+  reviewsReceived    Review[]      @relation("ReviewSubject")
+  wishlists          Wishlist[]
+  conversationsA     Conversation[] @relation("ConvUserA")
+  conversationsB     Conversation[] @relation("ConvUserB")
+  messages           Message[]
+  notifications      Notification[]
+  supportTickets     SupportTicket[] @relation("TicketRequester")
+  assignedTickets    SupportTicket[] @relation("TicketAssignee")
+  payouts            Payout[]
+  experiences        Experience[]
+  services           Service[]
+  adminActions       AuditLog[]    @relation("AdminActor")
+  teamMembers        TeamMember[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // EMAIL | PHONE | IDENTITY | DOCUMENT
+  status    String   // PENDING | APPROVED | REJECTED
+  payload   String?  // JSON-encoded safe metadata
+  createdAt DateTime @default(now())
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  role      String   @default("COHOST") // COHOST | CLEANER | MANAGER
+  permissions String @default("VIEW,MESSAGE") // comma separated
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// LISTINGS / INVENTORY
+// ============================================================
+
+model Listing {
+  id              String   @id @default(cuid())
+  hostId          String
+  title           String
+  slug            String   @unique
+  description     String
+  category        String   // VILLA | APARTMENT | CABIN | ROOM | LOFT | TINYHOUSE | BOAT | OTHER
+  roomType        String   @default("ENTIRE") // ENTIRE | PRIVATE | SHARED
+  propertyType    String?
+  status          String   @default("DRAFT") // DRAFT | PUBLISHED | PAUSED | ARCHIVED | PENDING_REVIEW
+  moderationStatus String @default("AUTO_APPROVED") // AUTO_APPROVED | PENDING | REJECTED | RESTRICTED
+
+  // Location
+  country         String
+  countryCode     String?
+  region          String?
+  city            String
+  neighborhood    String?
+  address         String?
+  postalCode      String?
+  lat             Float?
+  lng             Float?
+
+  // Capacity
+  maxGuests       Int      @default(2)
+  bedrooms        Int      @default(1)
+  beds            Int      @default(1)
+  bathrooms       Int      @default(1)
+
+  // Pricing
+  basePrice       Int      @default(10000) // in cents
+  weekendPrice    Int?
+  currency        String   @default("USD")
+  cleaningFee     Int      @default(0)
+  extraGuestFee   Int      @default(0)
+  securityDeposit Int      @default(0)
+  weeklyDiscountPct Int    @default(0)
+  monthlyDiscountPct Int   @default(0)
+
+  // Booking rules
+  minNights       Int      @default(1)
+  maxNights       Int      @default(365)
+  advanceBookingDays Int  @default(365)
+  preparationTimeHours Int @default(0)
+  checkInTime     String   @default("15:00")
+  checkOutTime    String   @default("11:00")
+  instantBook     Boolean  @default(false)
+  cancellationPolicy String @default("FLEXIBLE") // FLEXIBLE | MODERATE | STRICT | SUPER_STRICT
+
+  // House rules (comma-separated tokens)
+  houseRules      String?
+  allowsPets      Boolean  @default(false)
+  allowsSmoking   Boolean  @default(false)
+  allowsParties   Boolean  @default(false)
+  allowsChildren  Boolean  @default(true)
+  allowsInfants   Boolean  @default(true)
+
+  // Amenities (comma separated)
+  amenities       String
+
+  // Media
+  coverImage      String?
+  rating          Float    @default(0)
+  reviewCount     Int      @default(0)
+  views           Int      @default(0)
+  wishlistSaves   Int      @default(0)
+
+  // Analytics (denormalized for simplicity)
+  impressions     Int      @default(0)
+  detailViews     Int      @default(0)
+  bookingInquiries Int    @default(0)
+  bookingConfirmed Int    @default(0)
+  revenueCents    Int      @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  host            User     @relation(fields: [hostId], references: [id])
+  cohosts         TeamMember[]
+  photos          ListingPhoto[]
+  rooms           Room[]
+  availability    Availability[]
+  blockedDates    BlockedDate[]
+  priceOverrides  PriceOverride[]
+  seasonalRates   SeasonalRate[]
+  bookings        Booking[]
+  reviews         Review[]
+  wishlists       Wishlist[]
+  experiences     Experience[]
+}
+
+model ListingPhoto {
+  id        String   @id @default(cuid())
+  listingId String
+  url       String
+  caption   String?
+  position  Int      @default(0)
+  isCover   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model Room {
+  id        String   @id @default(cuid())
+  listingId String
+  name      String
+  bedType   String   @default("QUEEN") // SINGLE | DOUBLE | QUEEN | KING | BUNK | SOFA
+  bedCount  Int      @default(1)
+  photo     String?
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model Availability {
+  id        String   @id @default(cuid())
+  listingId String
+  date      DateTime
+  isAvailable Boolean @default(true)
+  priceOverride Int?
+  minNights Int?
+  createdAt DateTime @default(now())
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, date])
+}
+
+model BlockedDate {
+  id        String   @id @default(cuid())
+  listingId String
+  date      DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, date])
+}
+
+model PriceOverride {
+  id        String   @id @default(cuid())
+  listingId String
+  startDate DateTime
+  endDate   DateTime
+  price     Int // in cents
+  reason    String?
+  createdAt DateTime @default(now())
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model SeasonalRate {
+  id        String   @id @default(cuid())
+  listingId String
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  price     Int
+  weekendPrice Int?
+  createdAt DateTime @default(now())
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+// (ListingAnalytics folded into Listing for simplicity)
+
+// ============================================================
+// RESERVATIONS
+// ============================================================
+
+model Booking {
+  id              String   @id @default(cuid())
+  reference       String   @unique
+  listingId       String
+  guestId         String
+  hostId          String
+  status          String   @default("PENDING") // PENDING | CONFIRMED | DECLINED | CANCELLED | COMPLETED | NO_SHOW
+  checkIn         DateTime
+  checkOut        DateTime
+  nights          Int
+  adults          Int      @default(1)
+  children        Int      @default(0)
+  infants         Int      @default(0)
+  pets            Int      @default(0)
+
+  // Pricing snapshot (cents)
+  nightlySubtotal Int
+  cleaningFee     Int      @default(0)
+  serviceFee      Int      @default(0)
+  taxes           Int      @default(0)
+  discounts       Int      @default(0)
+  totalAmount     Int
+  hostPayout      Int
+  platformFee     Int
+  currency        String   @default("USD")
+  couponCode      String?
+
+  // Holds
+  inventoryHoldExpiresAt DateTime?
+
+  // Lifecycle
+  confirmedAt     DateTime?
+  cancelledAt     DateTime?
+  completedAt     DateTime?
+  cancellationReason String?
+  cancellationPolicyApplied String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  listing         Listing  @relation(fields: [listingId], references: [id])
+  guest           User     @relation("BookingGuest", fields: [guestId], references: [id])
+  host            User     @relation("BookingHost", fields: [hostId], references: [id])
+  paymentAttempts PaymentAttempt[]
+  payout          Payout?
+  messages        Message[]
+  reviews         Review[]
+  changes         BookingChange[]
+  tickets         SupportTicket[]
+}
+
+model BookingChange {
+  id          String   @id @default(cuid())
+  bookingId   String
+  requestedBy String   // GUEST | HOST | ADMIN
+  changeType  String   // DATES | GUESTS | CANCELLATION
+  oldValue    String?
+  newValue    String?
+  status      String   @default("PENDING") // PENDING | APPROVED | REJECTED | APPLIED
+  createdAt   DateTime @default(now())
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// PRICING & QUOTES
+// ============================================================
+
+model Coupon {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  type        String   // PERCENT | FLAT
+  value       Int      // percent or cents
+  validFrom   DateTime
+  validTo     DateTime
+  maxRedemptions Int?
+  redeemed    Int      @default(0)
+  minAmount   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+// ============================================================
+// PAYMENTS & FINANCE
+// ============================================================
+
+model PaymentAttempt {
+  id          String   @id @default(cuid())
+  bookingId   String
+  provider    String   @default("STRIPE") // STRIPE | PAYPAL | MOCK
+  providerRef String?
+  amount      Int
+  currency    String   @default("USD")
+  status      String   @default("PENDING") // PENDING | AUTHORIZED | CAPTURED | FAILED | REFUNDED | PARTIALLY_REFUNDED
+  intent      String   // CHARGE | REFUND | AUTHORIZATION
+  failReason  String?
+  idempotencyKey String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  refunds     Refund[]
+}
+
+model Refund {
+  id          String   @id @default(cuid())
+  paymentAttemptId String
+  amount      Int
+  currency    String
+  reason      String?
+  status      String   @default("PENDING") // PENDING | COMPLETED | FAILED
+  createdAt   DateTime @default(now())
+  paymentAttempt PaymentAttempt @relation(fields: [paymentAttemptId], references: [id], onDelete: Cascade)
+}
+
+model Payout {
+  id          String   @id @default(cuid())
+  hostId      String
+  bookingId   String   @unique
+  amount      Int
+  currency    String   @default("USD")
+  status      String   @default("PENDING") // PENDING | PROCESSING | COMPLETED | FAILED
+  provider    String   @default("BANK")
+  providerRef String?
+  scheduledAt DateTime?
+  completedAt DateTime?
+  failReason  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [hostId], references: [id])
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+}
+
+// ============================================================
+// COMMUNICATION
+// ============================================================
+
+model Conversation {
+  id          String   @id @default(cuid())
+  userAId     String
+  userBId     String
+  bookingId   String?
+  listingId   String?
+  lastMessageAt DateTime?
+  createdAt   DateTime @default(now())
+  userA       User     @relation("ConvUserA", fields: [userAId], references: [id])
+  userB       User     @relation("ConvUserB", fields: [userBId], references: [id])
+  messages    Message[]
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  conversationId String
+  senderId    String
+  bookingId   String?
+  body        String
+  attachmentUrl String?
+  isRead      Boolean  @default(false)
+  sentAt      DateTime @default(now())
+  readAt      DateTime?
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender      User     @relation(fields: [senderId], references: [id])
+  booking     Booking? @relation(fields: [bookingId], references: [id])
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // BOOKING_CONFIRMED | MESSAGE_RECEIVED | REVIEW_REMINDER | PAYOUT_PROCESSING | SUPPORT_UPDATE
+  title       String
+  body        String?
+  link        String?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NotificationPreference {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  emailEnabled Boolean @default(true)
+  pushEnabled  Boolean @default(true)
+  smsEnabled   Boolean @default(false)
+  marketingEnabled Boolean @default(false)
+}
+
+// ============================================================
+// REVIEWS
+// ============================================================
+
+model Review {
+  id          String   @id @default(cuid())
+  authorId    String
+  subjectId   String
+  listingId   String?
+  bookingId   String?
+  rating      Int      // 1-5
+  ratingAccuracy Int?
+  ratingCleanliness Int?
+  ratingCommunication Int?
+  ratingLocation Int?
+  ratingCheckIn Int?
+  ratingValue Int?
+  body        String?
+  photoUrls   String?
+  status      String   @default("PUBLISHED") // DRAFT | PUBLISHED | HIDDEN | REMOVED
+  moderationStatus String @default("OK") // OK | REPORTED | UNDER_REVIEW
+  createdAt   DateTime @default(now())
+  author      User     @relation("ReviewAuthor", fields: [authorId], references: [id])
+  subject     User     @relation("ReviewSubject", fields: [subjectId], references: [id])
+  listing     Listing? @relation(fields: [listingId], references: [id])
+  booking     Booking? @relation(fields: [bookingId], references: [id])
+}
+
+// ============================================================
+// WISHLISTS
+// ============================================================
+
+model Wishlist {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String   @default("Saved")
+  description String?
+  isPrivate   Boolean  @default(true)
+  shareToken  String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listings    Listing[]
+}
+
+// ============================================================
+// EXPERIENCES & SERVICES
+// ============================================================
+
+model Experience {
+  id          String   @id @default(cuid())
+  hostId      String
+  listingId   String?  // optional link to associated stay
+  title       String
+  description String
+  category    String
+  destination String
+  meetingPoint String?
+  durationMinutes Int
+  capacity     Int
+  pricePerPerson Int
+  currency    String   @default("USD")
+  ageMin      Int      @default(0)
+  ageMax      Int?
+  coverImage  String?
+  status      String   @default("PUBLISHED")
+  createdAt   DateTime @default(now())
+  host        User     @relation(fields: [hostId], references: [id])
+  listing     Listing? @relation(fields: [listingId], references: [id])
+  sessions    ExperienceSession[]
+}
+
+model ExperienceSession {
+  id            String   @id @default(cuid())
+  experienceId  String
+  startsAt      DateTime
+  endsAt        DateTime
+  capacity      Int
+  bookedCount   Int      @default(0)
+  priceOverride Int?
+  status        String   @default("OPEN") // OPEN | FULL | CANCELLED
+  createdAt     DateTime @default(now())
+  experience    Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  providerId  String
+  category    String   // CLEANING | MAINTENANCE | PHOTOGRAPHY | CONCIERGE | TRANSPORT
+  title       String
+  description String
+  basePrice   Int
+  currency    String   @default("USD")
+  serviceArea String?
+  duration    Int      // minutes
+  coverImage  String?
+  rating      Float    @default(0)
+  reviewCount Int      @default(0)
+  status      String   @default("PUBLISHED")
+  createdAt   DateTime @default(now())
+  provider    User     @relation(fields: [providerId], references: [id])
+  slots       ServiceSlot[]
+}
+
+model ServiceSlot {
+  id          String   @id @default(cuid())
+  serviceId   String
+  startsAt    DateTime
+  endsAt      DateTime
+  status      String   @default("OPEN")
+  createdAt   DateTime @default(now())
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// OPERATIONS
+// ============================================================
+
+model SupportTicket {
+  id          String   @id @default(cuid())
+  requesterId String
+  assigneeId  String?
+  subject     String
+  category    String   @default("GENERAL") // BOOKING | PAYMENT | LISTING | TRUST_SAFETY | ACCOUNT | GENERAL
+  priority    String   @default("NORMAL") // LOW | NORMAL | HIGH | URGENT
+  status      String   @default("OPEN") // OPEN | IN_PROGRESS | WAITING | RESOLVED | CLOSED
+  description String?
+  bookingId   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  requester   User     @relation("TicketRequester", fields: [requesterId], references: [id])
+  assignee    User?    @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  booking     Booking? @relation(fields: [bookingId], references: [id])
+  notes       TicketNote[]
+}
+
+model TicketNote {
+  id          String   @id @default(cuid())
+  ticketId    String
+  authorId    String
+  body        String
+  isInternal  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorId     String?
+  action      String   // USER_SUSPENDED | LISTING_REMOVED | REFUND_ISSUED | CONFIG_CHANGED
+  resource    String
+  resourceId  String?
+  metadata    String?
+  ip          String?
+  createdAt   DateTime @default(now())
+  actor       User?    @relation("AdminActor", fields: [actorId], references: [id])
+}
+
+// ============================================================
+// GROWTH / MARKETING
+// ============================================================
+
+model Campaign {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // DISCOUNT | REFERRAL | EMAIL | LANDING
+  startDate   DateTime
+  endDate     DateTime
+  active      Boolean  @default(true)
+  metadata    String?
+  createdAt   DateTime @default(now())
+}
+
+model ReferralCode {
+  id          String   @id @default(cuid())
+  ownerId     String
+  code        String   @unique
+  creditEarnedCents Int @default(0)
+  createdAt   DateTime @default(now())
+}

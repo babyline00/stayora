@@ -1,0 +1,1348 @@
+     1→# Airbnb — Complete Features & Functions Master Specification
+     2→
+     3→This expanded specification covers Airbnb's major marketplace capabilities and the additional features required to build a complete, production-ready Airbnb-style platform for Stayora.
+     4→
+     5→It goes beyond a list of website pages. It defines what each module should do, the actions users can perform, the business rules behind those actions, the admin controls, and the systems that connect everything.
+     6→
+     7→The Stayora design must remain consistent with your existing direction: navy blue, white, peach, and orange; left sidebar navigation; clean typography; rounded cards; soft shadows; and a simple, modern interface. The goal is to expand functionality without redesigning your existing pages.
+     8→
+     9→## 1. Complete platform overview
+    10→
+    11→### 01
+    12→
+    13→Public website
+    14→
+    15→Homepage, discovery, search, categories, destination pages, property details
+    16→
+    17→### 02
+    18→
+    19→Guest account
+    20→
+    21→Registration, login, profile, preferences, security, saved items
+    22→
+    23→### 03
+    24→
+    25→Search and discovery
+    26→
+    27→Filters, maps, sorting, availability-aware results, recommendations
+    28→
+    29→### 04
+    30→
+    31→Booking engine
+    32→
+    33→Calendar, pricing, checkout, confirmation, changes, cancellations
+    34→
+    35→### 05
+    36→
+    37→Guest dashboard
+    38→
+    39→Trips, payments, wishlists, messages, reviews, support
+    40→
+    41→### 06
+    42→
+    43→Host dashboard
+    44→
+    45→Listings, calendar, reservations, inbox, earnings, analytics
+    46→
+    47→### 07
+    48→
+    49→Experiences and services
+    50→
+    51→Activity bookings, service bookings, provider management
+    52→
+    53→### 08
+    54→
+    55→Messaging and notifications
+    56→
+    57→Guest-host conversations, alerts, email, push notifications
+    58→
+    59→### 09
+    60→
+    61→Payments and finance
+    62→
+    63→Charges, fees, taxes, refunds, payouts, invoices, reconciliation
+    64→
+    65→### 10
+    66→
+    67→Trust and safety
+    68→
+    69→Verification, fraud prevention, reports, disputes, incident management
+    70→
+    71→### 11
+    72→
+    73→Admin and support
+    74→
+    75→Users, listings, bookings, moderation, customer service, permissions
+    76→
+    77→### 12
+    78→
+    79→Growth and analytics
+    80→
+    81→SEO, marketing campaigns, conversion tracking, retention, reporting
+    82→
+    83→### 13
+    84→
+    85→Integrations and infrastructure
+    86→
+    87→Maps, search indexing, storage, external calendars, APIs, monitoring
+    88→
+    89→## 2. Homepage and public website
+    90→
+    91→### 2.1 Header and navigation
+    92→
+    93→- Stayora logo and home navigation.
+    94→- Main categories for homes, experiences, and services.
+    95→- Search bar with destination, dates, and guest count.
+    96→- Language and currency selector.
+    97→- Help and support links.
+    98→- Login and registration.
+    99→- Guest profile menu when logged in.
+   100→- Wishlist shortcut.
+   101→- Become a host / hosting dashboard access.
+   102→- Responsive mobile navigation and mobile menu.
+   103→- Sticky header where appropriate.
+   104→- Active navigation states and accessible keyboard controls.
+   105→
+   106→### 2.2 Homepage content
+   107→
+   108→- Hero section with prominent search.
+   109→- Destination autocomplete and popular destinations.
+   110→- Featured properties and recently added listings.
+   111→- Category-based discovery.
+   112→- Recommended stays.
+   113→- Trending destinations and seasonal collections.
+   114→- Property cards with images, location, price, and rating.
+   115→- Recently viewed listings.
+   116→- Personalized recommendations for returning users.
+   117→- Promotional campaigns and discount labels.
+   118→- Trust messaging and host recruitment section.
+   119→- Experiences and services discovery sections.
+   120→- FAQ, footer navigation, contact information, and legal links.
+   121→
+   122→### 2.3 Property cards
+   123→
+   124→Each property card should support:
+   125→
+   126→- Main image and image carousel.
+   127→- Property name or short description.
+   128→- Location and distance where available.
+   129→- Property category and key features.
+   130→- Nightly price and applicable pricing labels.
+   131→- Average rating and review count.
+   132→- Availability-aware price preview.
+   133→- Wishlist save/unsave button.
+   134→- Discount or special-offer badge when eligible.
+   135→- Guest capacity and bedroom information where useful.
+   136→- Navigation to property details.
+   137→- Image loading placeholders and broken-image fallback.
+   138→- Responsive layouts for desktop, tablet, and mobile.
+   139→
+   140→Business rule: A card must not imply that a property is available for selected dates unless the availability service confirms it.
+   141→
+   142→## 3. Search, filters, and discovery engine
+   143→
+   144→### 3.1 Search inputs
+   145→
+   146→| Feature              | Function                                                     |
+   147→| -------------------- | ------------------------------------------------------------ |
+   148→| Destination          | Search by city, region, country, neighborhood, or landmark   |
+   149→| Autocomplete         | Suggest matching locations as the user types                 |
+   150→| Flexible dates       | Search flexible weekends, weeks, or longer trips             |
+   151→| Check-in / check-out | Validate dates and stay duration                             |
+   152→| Guest selector       | Adults, children, infants, and pets                          |
+   153→| Property category    | Villas, apartments, cabins, rooms, and other supported types |
+   154→| Map search           | Find properties in the visible geographic area               |
+   155→| Recent searches      | Restore previous destinations and search criteria            |
+   156→| Search URL           | Preserve filters and dates when sharing a result page        |
+   157→
+   158→### 3.2 Advanced filters
+   159→
+   160→- Minimum and maximum budget.
+   161→- Price per night and estimated total stay price.
+   162→- Entire place, private room, or shared room.
+   163→- Number of bedrooms, beds, and bathrooms.
+   164→- Pool, Wi-Fi, kitchen, parking, workspace, air conditioning, and other amenities.
+   165→- Pet-friendly accommodation.
+   166→- Accessibility requirements.
+   167→- Instant Book eligibility.
+   168→- Guest rating and review count.
+   169→- Cancellation terms.
+   170→- Special property categories.
+   171→- Family-friendly and long-stay criteria.
+   172→- Host and property attributes supported by the platform.
+   173→- Available dates and minimum-night requirements.
+   174→
+   175→### 3.3 Sorting options
+   176→
+   177→- Recommended.
+   178→- Price: lowest first.
+   179→- Price: highest first.
+   180→- Highest-rated properties.
+   181→- Most-reviewed properties.
+   182→- Distance from a selected location.
+   183→- Recently added properties.
+   184→- Relevance to the selected filters.
+   185→
+   186→### 3.4 Search engine functions
+   187→
+   188→1. Normalize destination and date inputs.
+   189→2. Validate guest count and trip dates.
+   190→3. Retrieve properties matching hard filters.
+   191→4. Exclude unavailable or restricted inventory.
+   192→5. Apply price and occupancy rules.
+   193→6. Rank eligible properties.
+   194→7. Return paginated or progressively loaded results.
+   195→8. Display accurate counts and applied filters.
+   196→9. Support clearing individual filters or all filters.
+   197→10. Preserve search state during navigation.
+   198→11. Handle empty results with useful alternative suggestions.
+   199→12. Cache safe, reusable search data without serving stale booking availability as authoritative.
+   200→
+   201→Advanced features: map clustering, geospatial queries, synonym matching, typo tolerance, multilingual destination search, natural-language search, and personalized ranking.
+   202→
+   203→## 4. Property detail page
+   204→
+   205→The property page should contain all information a guest needs before committing to a reservation.
+   206→
+   207→## Property page sections
+   208→
+   209→01
+   210→
+   211→Photo gallery
+   212→
+   213→Cover image, multiple photos, room galleries, fullscreen viewer, keyboard navigation, and image loading states.
+   214→
+   215→02
+   216→
+   217→Property overview
+   218→
+   219→Title, category, location, guest capacity, beds, bedrooms, bathrooms, rating, and review count.
+   220→
+   221→03
+   222→
+   223→Host information
+   224→
+   225→Host profile, languages, hosting history, response metrics where available, and verification indicators.
+   226→
+   227→04
+   228→
+   229→Description
+   230→
+   231→Property overview, highlights, nearby attractions, intended guest experience, and accommodation details.
+   232→
+   233→05
+   234→
+   235→Amenities
+   236→
+   237→Grouped facilities, included amenities, unavailable facilities, accessibility information, and special equipment.
+   238→
+   239→06
+   240→
+   241→Room details
+   242→
+   243→Sleeping arrangements, bed types, bathrooms, private/shared spaces, and room photographs.
+   244→
+   245→07
+   246→
+   247→Availability calendar
+   248→
+   249→Date selection, blocked nights, minimum stay, arrival restrictions, and nightly rates.
+   250→
+   251→08
+   252→
+   253→Price summary
+   254→
+   255→Nightly subtotal, discounts, cleaning charges, service fees, taxes, and final total.
+   256→
+   257→09
+   258→
+   259→House rules
+   260→
+   261→Check-in and check-out times, smoking, parties, pets, occupancy, and other restrictions.
+   262→
+   263→10
+   264→
+   265→Reviews
+   266→
+   267→Overall rating, rating breakdown, written reviews, photos where supported, and review sorting.
+   268→
+   269→11
+   270→
+   271→Location
+   272→
+   273→Map, approximate or disclosed address, nearby amenities, and location context.
+   274→
+   275→12
+   276→
+   277→Booking panel
+   278→
+   279→Date and guest selectors, availability check, reserve action, request-to-book flow where applicable.
+   280→
+   281→### Property actions
+   282→
+   283→- Save to a wishlist.
+   284→- Remove from a wishlist.
+   285→- Share a listing.
+   286→- Copy a listing link.
+   287→- Ask the host a question.
+   288→- Select dates and guest count.
+   289→- View itemized pricing.
+   290→- Start checkout.
+   291→- Report a listing.
+   292→- Navigate to similar properties.
+   293→- Return to search without losing filters.
+   294→
+   295→## 5. Guest authentication and account management
+   296→
+   297→### Registration and login
+   298→
+   299→- Email and password registration.
+   300→- Email verification.
+   301→- Phone verification where required.
+   302→- Supported social sign-in providers.
+   303→- Password reset.
+   304→- Secure session creation and logout.
+   305→- Optional multi-factor authentication.
+   306→- Rate limiting and suspicious-login detection.
+   307→- Session expiry and account recovery.
+   308→- Terms and privacy consent records.
+   309→
+   310→### Guest profile
+   311→
+   312→- Profile photo.
+   313→- Display name and permitted personal details.
+   314→- Short biography.
+   315→- Language and currency preferences.
+   316→- Country or region settings.
+   317→- Contact details and verification status.
+   318→- Notification preferences.
+   319→- Saved payment methods through a compliant payment provider.
+   320→- Account deletion request.
+   321→- Data export and privacy requests.
+   322→- Login history and active-session management.
+   323→- Privacy and visibility controls.
+   324→
+   325→### Guest dashboard navigation
+   326→
+   327→Recommended Stayora menu:
+   328→
+   329→- Overview.
+   330→- My Trips.
+   331→- Upcoming reservations.
+   332→- Current stays.
+   333→- Past trips.
+   334→- Wishlists.
+   335→- Messages.
+   336→- Reviews.
+   337→- Payments and transactions.
+   338→- Refunds.
+   339→- Notifications.
+   340→- Profile and security.
+   341→- Help and support.
+   342→
+   343→### Guest dashboard overview
+   344→
+   345→Display upcoming trip cards, booking status, arrival dates, unpaid balances where applicable, unread messages, pending reviews, recent saved properties, and support updates.
+   346→
+   347→Each card should link to the relevant action rather than showing static, nonfunctional information.
+   348→
+   349→## 6. Booking engine and reservation management
+   350→
+   351→This module requires the strongest validation because it controls inventory and financial transactions.
+   352→
+   353→### 6.1 Availability rules
+   354→
+   355→- Check-in must precede check-out.
+   356→- Enforce maximum occupancy.
+   357→- Enforce minimum and maximum stay duration.
+   358→- Prevent reservations on blocked dates.
+   359→- Prevent overlapping confirmed reservations.
+   360→- Support preparation buffers between bookings.
+   361→- Enforce advance-booking windows.
+   362→- Support minimum lead time.
+   363→- Support check-in and check-out restrictions.
+   364→- Support seasonal availability.
+   365→- Account for local dates and time zones.
+   366→- Allow authorized hosts to block personal dates.
+   367→- Revalidate availability during checkout and before confirmation.
+   368→
+   369→### 6.2 Reservation creation
+   370→
+   371→1. Receive selected property, dates, guests, and guest identity.
+   372→2. Recalculate availability and price on the server.
+   373→3. Create a temporary inventory hold where the chosen booking model supports it.
+   374→4. Create the booking with a unique reference.
+   375→5. Initiate payment or host approval as required.
+   376→6. Process the payment provider's authoritative result.
+   377→7. Confirm the reservation atomically with inventory updates.
+   378→8. Send confirmation notifications.
+   379→9. Update the guest dashboard, host dashboard, and calendar.
+   380→10. Record the transaction and audit events.
+   381→
+   382→A temporary hold must expire safely. A payment failure must not permanently block inventory, and retrying a request must not create duplicate reservations.
+   383→
+   384→### 6.3 Booking detail page
+   385→
+   386→Include:
+   387→
+   388→- Reservation reference.
+   389→- Property and host information.
+   390→- Check-in and check-out.
+   391→- Number and type of guests.
+   392→- Reservation status.
+   393→- Payment status and amount due.
+   394→- Itemized booking price.
+   395→- Cancellation policy.
+   396→- Host contact and message history.
+   397→- Check-in instructions when available.
+   398→- Change-request history.
+   399→- Cancellation and refund information.
+   400→- Downloadable receipt or invoice where supported.
+   401→- Support action and incident reporting.
+   402→
+   403→### 6.4 Modify and cancel reservations
+   404→
+   405→- Change dates when availability permits.
+   406→- Change guest count within occupancy rules.
+   407→- Recalculate the price and any difference.
+   408→- Request host approval where required.
+   409→- Display the consequences of a change before submission.
+   410→- Calculate cancellation eligibility and refund amount.
+   411→- Record the cancellation reason.
+   412→- Notify the host and guest.
+   413→- Release inventory when appropriate.
+   414→- Process any refund separately from the cancellation event.
+   415→- Preserve historical booking and financial records.
+   416→
+   417→## 7. Pricing, discounts, fees, and taxes
+   418→
+   419→A marketplace needs a dedicated pricing engine rather than a single price field on each listing.
+   420→
+   421→### Host pricing controls
+   422→
+   423→- Base nightly rate.
+   424→- Weekend rates.
+   425→- Seasonal rates.
+   426→- Date-specific overrides.
+   427→- Weekly and monthly discounts.
+   428→- Early-booking discounts.
+   429→- Last-minute discounts.
+   430→- Promotional rates.
+   431→- Minimum and maximum stay.
+   432→- Cleaning fee.
+   433→- Extra-guest fee where permitted.
+   434→- Security-deposit or damage-policy handling where legally and operationally supported.
+   435→- Currency selection subject to supported markets.
+   436→
+   437→### Pricing calculation
+   438→
+   439→A recommended model:
+   440→
+   441→\\[ \text{Accommodation Subtotal} =\sum\_{d=\text{check-in}}^{\text{check-out}-1} \text{Nightly Rate}(d) \\]
+   442→
+   443→\\[ \text{Pre-Tax Total} =\text{Subtotal}-\text{Discounts}+\text{Fees} \\]
+   444→
+   445→\\[ \text{Final Total} =\text{Pre-Tax Total}+\text{Applicable Taxes} \\]
+   446→
+   447→This is a conceptual formula. The actual calculation order, fee basis, tax treatment, rounding, and currency conversion rules must be explicitly defined for each supported market.
+   448→
+   449→### Pricing functions
+   450→
+   451→- Calculate a quote before checkout.
+   452→- Return an itemized breakdown.
+   453→- Recalculate quotes when dates or guest counts change.
+   454→- Validate coupon eligibility and expiry.
+   455→- Prevent incompatible discounts from being stacked.
+   456→- Store the quote and price components associated with a confirmed booking.
+   457→- Record currency and rounding rules.
+   458→- Display the total cost transparently.
+   459→- Generate receipts and transaction reports.
+   460→- Reconcile booking amounts with payment records.
+   461→
+   462→## 8. Payment gateway and financial management
+   463→
+   464→### Guest payments
+   465→
+   466→- Supported credit and debit cards.
+   467→- Digital wallets or regional methods where available.
+   468→- Secure payment-method tokenization.
+   469→- Payment authorization and capture where supported.
+   470→- Full or partial payments if the business model permits.
+   471→- Scheduled payment collection where supported.
+   472→- Payment retry and failure recovery.
+   473→- Payment confirmation and receipts.
+   474→- Refund tracking.
+   475→- Payment history and downloadable transaction records.
+   476→
+   477→### Host payouts
+   478→
+   479→- Host payout profile.
+   480→- Supported bank or payment-provider account.
+   481→- Identity or tax information where required.
+   482→- Payout eligibility checks.
+   483→- Payout schedule.
+   484→- Pending, processing, completed, and failed payouts.
+   485→- Payout statement and transaction references.
+   486→- Adjustments and deductions.
+   487→- Payout reconciliation.
+   488→- Alerts for missing or invalid payout details.
+   489→
+   490→### Admin finance
+   491→
+   492→- Gross booking value.
+   493→- Platform commission.
+   494→- Host earnings.
+   495→- Guest service fees.
+   496→- Tax components.
+   497→- Refund liability.
+   498→- Chargebacks and payment disputes.
+   499→- Payout reconciliation.
+   500→- Financial reporting by date, country, and currency.
+   501→
+   502→Important: Never store raw card numbers or CVV codes in the Stayora database. Use a payment provider and store only permitted references and transaction metadata. Payment provider capabilities, marketplace payout eligibility, and regional requirements must be verified before implementation.
+   503→
+   504→## 9. Host dashboard — full feature specification
+   505→
+   506→The host workspace should have consistent left-side navigation and dedicated screens for every major workflow.
+   507→
+   508→### 9.1 Host dashboard overview
+   509→
+   510→- Total revenue and net earnings.
+   511→- Upcoming reservations.
+   512→- Pending booking requests.
+   513→- Occupancy rate.
+   514→- Average nightly rate.
+   515→- Average booking value.
+   516→- Listing views and booking conversion.
+   517→- Calendar availability.
+   518→- Unread messages.
+   519→- Check-ins and check-outs.
+   520→- Listing quality alerts.
+   521→- Payout status.
+   522→- Recent reviews.
+   523→- Recommended actions.
+   524→
+   525→KPIs must be calculated from real data and clearly distinguish gross booking value, host earnings, and amounts actually paid out.
+   526→
+   527→### 9.2 Listing creation wizard
+   528→
+   529→Use a multi-step wizard with saved progress.
+   530→
+   531→Step 1
+   532→
+   533→Property type
+   534→
+   535→Choose the accommodation type and hosting format.
+   536→
+   537→Step 2
+   538→
+   539→Location
+   540→
+   541→Address, map position, country, region, and postal code.
+   542→
+   543→Step 3
+   544→
+   545→Capacity
+   546→
+   547→Guests, bedrooms, beds, bathrooms, and sleeping arrangements.
+   548→
+   549→Step 4
+   550→
+   551→Amenities
+   552→
+   553→Facilities, safety equipment, accessibility, and internet.
+   554→
+   555→Step 5
+   556→
+   557→Photos
+   558→
+   559→Upload, reorder, caption, select cover image, and validate files.
+   560→
+   561→Step 6
+   562→
+   563→Description
+   564→
+   565→Title, summary, detailed description, and highlights.
+   566→
+   567→Step 7
+   568→
+   569→Rules
+   570→
+   571→Check-in/out, pets, smoking, parties, and guest restrictions.
+   572→
+   573→Step 8
+   574→
+   575→Availability
+   576→
+   577→Booking window, blocked dates, minimum stay, and preparation time.
+   578→
+   579→Step 9
+   580→
+   581→Pricing
+   582→
+   583→Nightly rates, seasonal pricing, discounts, and applicable fees.
+   584→
+   585→Step 10
+   586→
+   587→Review and publish
+   588→
+   589→Preview the listing, validate required fields, and publish or save as draft.
+   590→
+   591→### 9.3 Listing management
+   592→
+   593→- View all listings.
+   594→- Search and filter by status.
+   595→- Draft, published, paused, and archived states.
+   596→- Edit listing details.
+   597→- Duplicate listing settings where permitted.
+   598→- Preview as a guest.
+   599→- Publish or unpublish.
+   600→- Upload and organize images.
+   601→- Update amenities and house rules.
+   602→- Edit pricing and discounts.
+   603→- Manage availability.
+   604→- View listing performance.
+   605→- Review guest feedback.
+   606→- Resolve listing-quality warnings.
+   607→- Archive or remove listings subject to booking and retention rules.
+   608→
+   609→### 9.4 Host calendar
+   610→
+   611→- Monthly, multi-month, and date-range views.
+   612→- Reserved, available, blocked, and pending dates.
+   613→- Nightly prices displayed on dates.
+   614→- Date-range selection.
+   615→- Bulk block and unblock.
+   616→- Bulk price updates.
+   617→- Minimum-stay adjustments.
+   618→- Check-in/out restrictions.
+   619→- Preparation gaps between stays.
+   620→- Availability windows.
+   621→- Seasonal price rules.
+   622→- External calendar import/export where supported.
+   623→- Conflict warnings.
+   624→- Synchronization status and error recovery.
+   625→- Calendar navigation by listing.
+   626→
+   627→### 9.5 Reservation management
+   628→
+   629→- Reservation list and search.
+   630→- Filter by booking status and dates.
+   631→- View guest details.
+   632→- Review booking requests.
+   633→- Accept or decline requests where the reservation model requires it.
+   634→- Confirmed, upcoming, current, and completed bookings.
+   635→- Booking modification requests.
+   636→- Cancellation and refund history.
+   637→- Guest messages.
+   638→- Check-in and check-out tasks.
+   639→- Downloadable booking reports.
+   640→- Reservation-linked incident reports.
+   641→
+   642→### 9.6 Host inbox
+   643→
+   644→- Conversation list.
+   645→- Search messages.
+   646→- Filter unread and reservation-related conversations.
+   647→- Guest profile and reservation context.
+   648→- Text and supported attachments.
+   649→- Saved replies.
+   650→- Quick responses.
+   651→- Message timestamps and delivery status where available.
+   652→- Notification preferences.
+   653→- Report or block controls where applicable.
+   654→- Support escalation.
+   655→- Read/unread state.
+   656→- Unanswered-message indicators.
+   657→
+   658→### 9.7 Earnings and payouts
+   659→
+   660→- Earnings overview.
+   661→- Gross reservation value.
+   662→- Fees and adjustments.
+   663→- Net host earnings.
+   664→- Pending payout balance.
+   665→- Payout history.
+   666→- Failed payout alerts.
+   667→- Payment-method management.
+   668→- Transaction details.
+   669→- Booking-to-payout reconciliation.
+   670→- Monthly and annual summaries.
+   671→- Export to CSV.
+   672→- Downloadable statements.
+   673→
+   674→### 9.8 Pricing and discounts
+   675→
+   676→- Base nightly rate.
+   677→- Calendar-specific rates.
+   678→- Weekend pricing.
+   679→- Seasonal pricing.
+   680→- Weekly and monthly discounts.
+   681→- Promotion rules.
+   682→- Minimum and maximum stays.
+   683→- Extra guest charges where allowed.
+   684→- Cleaning charges.
+   685→- Pricing preview for selected dates.
+   686→- Effective-date controls.
+   687→- Price change history.
+   688→
+   689→### 9.9 Reviews and analytics
+   690→
+   691→- Review list.
+   692→- Rating distribution.
+   693→- Response workflow where supported.
+   694→- Guest feedback trends.
+   695→- Listing impressions.
+   696→- Listing detail views.
+   697→- Wishlist saves.
+   698→- Booking conversion.
+   699→- Cancellation rates.
+   700→- Occupancy trends.
+   701→- Average nightly rate.
+   702→- Revenue trends.
+   703→- Comparison with prior periods.
+   704→- Downloadable reports.
+   705→
+   706→### 9.10 Co-hosting and team management
+   707→
+   708→- Invite a co-host.
+   709→- Assign listings.
+   710→- Configure permissions.
+   711→- Set up operational responsibilities.
+   712→- Manage shared communication.
+   713→- Review co-host activity.
+   714→- Remove access.
+   715→- Keep financial and identity settings restricted to authorized users.
+   716→
+   717→## 10. Guest-host messaging and notifications
+   718→
+   719→### Messaging functions
+   720→
+   721→- Conversation creation and retrieval.
+   722→- Booking-linked conversations.
+   723→- Pre-booking inquiries.
+   724→- Host and guest replies.
+   725→- Message history.
+   726→- Unread counters.
+   727→- File and image attachments subject to limits.
+   728→- Spam and abuse reporting.
+   729→- Conversation search.
+   730→- Message retention policies.
+   731→- Moderation and audit support.
+   732→- Real-time delivery through WebSockets or a managed messaging service where appropriate.
+   733→
+   734→### Notification events
+   735→
+   736→| Event                         | Recipient                        |
+   737→| ----------------------------- | -------------------------------- |
+   738→| Account verification          | Guest or host                    |
+   739→| Booking request received      | Host                             |
+   740→| Booking confirmed             | Guest and host                   |
+   741→| Booking declined or expired   | Guest                            |
+   742→| Payment succeeded or failed   | Guest                            |
+   743→| Reservation modified          | Guest and host                   |
+   744→| Reservation cancelled         | Guest and host                   |
+   745→| Refund initiated or completed | Guest                            |
+   746→| New message received          | Relevant recipient               |
+   747→| Check-in approaching          | Guest and host where appropriate |
+   748→| Payout processing or failure  | Host                             |
+   749→| Review reminder               | Eligible guest or host           |
+   750→| Support ticket update         | Requester                        |
+   751→
+   752→Include notification preferences, retry handling, duplicate-event prevention, delivery logs, and a notification center in the dashboard.
+   753→
+   754→## 11. Wishlists and saved properties
+   755→
+   756→- Create multiple wishlists.
+   757→- Rename and delete wishlists.
+   758→- Save and remove properties.
+   759→- Add notes where supported.
+   760→- Share a wishlist using an authorized link.
+   761→- Set private or shared visibility.
+   762→- View listing availability for planned dates.
+   763→- Sort saved properties.
+   764→- Remove unavailable or deleted listings gracefully.
+   765→- Display price changes or availability changes when supported.
+   766→- Sync wishlist changes across the user's devices.
+   767→
+   768→## 12. Reviews, ratings, and reputation
+   769→
+   770→### Guest reviews
+   771→
+   772→- Submit reviews after an eligible reservation.
+   773→- Rating and written feedback.
+   774→- Category-level ratings where appropriate.
+   775→- Optional image attachments if supported.
+   776→- Review editing within defined rules.
+   777→- Review submission deadlines.
+   778→- Duplicate-review prevention.
+   779→- Moderation and abuse reporting.
+   780→
+   781→### Host reviews
+   782→
+   783→- Review eligible guests.
+   784→- Feedback about communication and rule compliance.
+   785→- Review submission eligibility.
+   786→- Moderation and appeals where supported.
+   787→
+   788→### Rating logic
+   789→
+   790→- Calculate averages from eligible published ratings.
+   791→- Store rating counts and moderation state.
+   792→- Avoid allowing the same booking to generate unlimited reviews.
+   793→- Recalculate aggregates when a review changes state.
+   794→- Make review visibility rules explicit.
+   795→- Prevent unauthorized users from altering reviews.
+   796→
+   797→## 13. Trust, safety, and identity verification
+   798→
+   799→- Email and phone verification.
+   800→- Identity verification provider integration.
+   801→- Host verification indicators.
+   802→- Listing authenticity checks.
+   803→- Duplicate and suspicious listing detection.
+   804→- Risk-based login challenges.
+   805→- Rate limits for authentication and booking.
+   806→- Fraud signals and suspicious transaction review.
+   807→- Report listing, user, message, or review.
+   808→- Incident reporting.
+   809→- Safety support workflow.
+   810→- Account restriction and suspension.
+   811→- Appeals and reinstatement workflow.
+   812→- Evidence and case documentation.
+   813→- Permission-based access to sensitive information.
+   814→- Audit logs for administrative actions.
+   815→- Secure handling of personal information.
+   816→- Data deletion and retention policies.
+   817→
+   818→Identity verification, legal compliance, insurance, and property safety requirements vary by country. These features should be implemented through suitable providers and documented procedures rather than treated as a single universal checkbox.
+   819→
+   820→## 14. Experiences and services marketplace
+   821→
+   822→For a complete Airbnb-style platform, these should be separate product categories with their own listing fields and booking logic.
+   823→
+   824→### Experiences
+   825→
+   826→- Activity title and description.
+   827→- Host or organizer profile.
+   828→- Photos and activity highlights.
+   829→- Destination and meeting point.
+   830→- Duration and scheduled sessions.
+   831→- Participant capacity.
+   832→- Price per participant.
+   833→- Age restrictions and requirements.
+   834→- Cancellation rules.
+   835→- Available dates and times.
+   836→- Reservation and payment.
+   837→- Guest messages and instructions.
+   838→- Reviews and ratings.
+   839→- Host schedule and attendee management.
+   840→
+   841→### Services
+   842→
+   843→- Service category.
+   844→- Provider profile and qualifications.
+   845→- Service description and photos.
+   846→- Service location or service area.
+   847→- Duration and appointment slots.
+   848→- Base price and package options.
+   849→- Availability and capacity.
+   850→- Required preparation or customer information.
+   851→- Booking confirmation.
+   852→- Cancellation and rescheduling.
+   853→- Payment and provider payout.
+   854→- Reviews, reports, and support.
+   855→
+   856→Key architectural rule: Do not assume that an accommodation booking, an experience reservation, and a service appointment have identical availability rules. Use shared payment and user systems, but support category-specific inventory and scheduling.
+   857→
+   858→## 15. Admin panel — full control center
+   859→
+   860→The admin panel should be a separate protected workspace with role-based permissions and audit logs.
+   861→
+   862→### 15.1 Admin dashboard
+   863→
+   864→- Total registered users.
+   865→- Active guests and hosts.
+   866→- Total published properties.
+   867→- New listings awaiting review.
+   868→- Total reservations.
+   869→- Upcoming check-ins.
+   870→- Cancelled reservations.
+   871→- Gross booking value.
+   872→- Platform revenue and commission.
+   873→- Payment failures.
+   874→- Pending refunds.
+   875→- Host payout exceptions.
+   876→- Support ticket backlog.
+   877→- Reported content and safety incidents.
+   878→- Booking conversion and growth charts.
+   879→
+   880→### 15.2 User administration
+   881→
+   882→- Search users by ID, name, email, or status.
+   883→- View user profiles and account history.
+   884→- View host and guest roles.
+   885→- Manage account verification status based on authorized evidence.
+   886→- Suspend or reactivate accounts.
+   887→- Handle deletion requests.
+   888→- Review abuse reports.
+   889→- Restrict actions for policy violations.
+   890→- Assign support cases.
+   891→- Maintain a record of administrative changes.
+   892→
+   893→### 15.3 Property administration
+   894→
+   895→- View all properties.
+   896→- Filter by draft, published, pending, or restricted.
+   897→- Approve or reject listings when moderation is required.
+   898→- Review property photos and descriptions.
+   899→- Check required listing information.
+   900→- Detect duplicate listings.
+   901→- Review reported properties.
+   902→- Restrict or remove violating listings.
+   903→- Track listing changes.
+   904→- Inspect property-related bookings and complaints.
+   905→
+   906→### 15.4 Booking administration
+   907→
+   908→- Search reservations.
+   909→- Filter by date, guest, host, property, and status.
+   910→- View full reservation history.
+   911→- Inspect price breakdowns.
+   912→- Review booking modifications.
+   913→- Handle authorized cancellation exceptions.
+   914→- Review refund requests.
+   915→- Track disputes and chargebacks.
+   916→- Access booking audit events.
+   917→- Resolve inconsistencies between booking and payment states.
+   918→
+   919→### 15.5 Finance administration
+   920→
+   921→- Platform commission configuration.
+   922→- Service-fee rules.
+   923→- Transaction search.
+   924→- Refund management.
+   925→- Payout monitoring.
+   926→- Failed-payment reports.
+   927→- Chargeback records.
+   928→- Tax reporting data.
+   929→- Financial reconciliation.
+   930→- Revenue by date and currency.
+   931→- CSV exports.
+   932→- Restricted access to sensitive payment information.
+   933→
+   934→### 15.6 Support and moderation
+   935→
+   936→- Ticket inbox.
+   937→- Ticket assignment.
+   938→- Priority and severity.
+   939→- Internal notes.
+   940→- Guest and host communication history.
+   941→- Saved response templates.
+   942→- Escalation rules.
+   943→- Refund and cancellation approval permissions.
+   944→- Complaint evidence.
+   945→- Resolution categories.
+   946→- Response-time reporting.
+   947→- Ticket status history.
+   948→
+   949→### 15.7 Admin roles and permissions
+   950→
+   951→| Role                        | Typical access                               |
+   952→| --------------------------- | -------------------------------------------- |
+   953→| Super administrator         | Platform configuration and role management   |
+   954→| Operations manager          | Listings, bookings, operational exceptions   |
+   955→| Support agent               | Customer cases and permitted booking details |
+   956→| Finance manager             | Transactions, refunds, payouts, reports      |
+   957→| Trust and safety specialist | Verification, reports, incidents, moderation |
+   958→| Content moderator           | Listings, reviews, reported content          |
+   959→| Analyst                     | Aggregated analytics and approved exports    |
+   960→
+   961→Use the principle of least privilege. A support agent should not automatically have access to payment credentials, unrestricted user exports, or platform-wide configuration.
+   962→
+   963→## 16. Marketing, SEO, and growth features
+   964→
+   965→A marketplace also needs systems that bring in users and convert visitors into bookings.
+   966→
+   967→### SEO functions
+   968→
+   969→- Search-engine-friendly URLs.
+   970→- Unique page titles and meta descriptions.
+   971→- Canonical URLs.
+   972→- XML sitemaps.
+   973→- Robots directives.
+   974→- Structured data where applicable.
+   975→- Open Graph metadata.
+   976→- Optimized image sizes and descriptive alt text.
+   977→- Destination landing pages.
+   978→- Internal linking.
+   979→- Breadcrumbs.
+   980→- Pagination handling.
+   981→- Server-rendered or statically generated public listing content where appropriate.
+   982→- Indexing controls for thin, duplicate, private, and filtered pages.
+   983→- Broken-link and redirect management.
+   984→
+   985→### Conversion optimization
+   986→
+   987→- Track search-to-listing clicks.
+   988→- Track listing-to-checkout progression.
+   989→- Track checkout abandonment.
+   990→- Analyze booking completion.
+   991→- Measure filter usage.
+   992→- Measure wishlist saves.
+   993→- Track host registration completion.
+   994→- Monitor listing publication conversion.
+   995→- Run controlled A/B experiments.
+   996→- Evaluate page performance by device and traffic source.
+   997→
+   998→### Marketing tools
+   999→
+  1000→- Discount and promotional campaigns.
+  1001→- Referral programs.
+  1002→- Eligible coupon codes.
+  1003→- Guest re-engagement campaigns with consent.
+  1004→- Host acquisition landing pages.
+  1005→- Email templates and lifecycle automation.
+  1006→- Campaign attribution.
+  1007→- Landing-page analytics.
+  1008→- Content and destination guides.
+  1009→- Abandoned-booking reminders where legally permitted.
+  1010→
+  1011→Do not send promotional messages without appropriate consent or use hidden fees and misleading discounts to increase conversion.
+  1012→
+  1013→## 17. Advanced and premium features
+  1014→
+  1015→These features can be added after the core marketplace works reliably.
+  1016→
+  1017→AI travel assistant
+  1018→
+  1019→Natural-language trip planning, destination suggestions, preference extraction, and recommended properties.
+  1020→
+  1021→Personalized discovery
+  1022→
+  1023→Recommendations based on consented preferences, prior searches, saved properties, and trip requirements.
+  1024→
+  1025→Interactive trip map
+  1026→
+  1027→Property markers, clustering, neighborhood exploration, and route planning where relevant.
+  1028→
+  1029→Calendar and channel integrations
+  1030→
+  1031→External calendar synchronization, partner inventory integrations, and conflict monitoring.
+  1032→
+  1033→Revenue optimization
+  1034→
+  1035→Occupancy analysis, seasonal pricing suggestions, demand trends, and pricing experiments.
+  1036→
+  1037→Group trip planning
+  1038→
+  1039→Shared wishlists, collaborative property selection, and guest coordination.
+  1040→
+  1041→Loyalty and referrals
+  1042→
+  1043→Eligible rewards, referral tracking, promotional credits, and transparent redemption rules.
+  1044→
+  1045→Property management tools
+  1046→
+  1047→Multi-property operations, staff roles, cleaning schedules, maintenance tasks, and operational reports.
+  1048→
+  1049→Mobile applications
+  1050→
+  1051→Mobile-first booking, saved trips, push notifications, messaging, and host calendar access.
+  1052→
+  1053→Accessibility enhancements
+  1054→
+  1055→Keyboard navigation, screen-reader support, accessible forms, contrast controls, and assistive-technology testing.
+  1056→
+  1057→## 18. Database and data relationships
+  1058→
+  1059→A full implementation should account for more than just users, properties, and bookings.
+  1060→
+  1061→| Domain        | Recommended entities                                                       |
+  1062→| ------------- | -------------------------------------------------------------------------- |
+  1063→| Identity      | Users, profiles, sessions, verification records, roles, permissions        |
+  1064→| Listings      | Listings, listing photos, rooms, beds, amenities, house rules, locations   |
+  1065→| Inventory     | Availability dates, blocked dates, nightly rates, booking holds            |
+  1066→| Reservations  | Bookings, guests, booking changes, cancellations, cancellation policies    |
+  1067→| Pricing       | Quotes, quote line items, discounts, coupons, fee rules, tax records       |
+  1068→| Payments      | Payment attempts, transactions, refunds, disputes, payouts, reconciliation |
+  1069→| Communication | Conversations, messages, attachments, notification preferences             |
+  1070→| Reviews       | Reviews, rating categories, moderation decisions, reports                  |
+  1071→| Wishlists     | Wishlists, saved listing records, sharing permissions                      |
+  1072→| Experiences   | Experience listings, sessions, participant capacity, attendees             |
+  1073→| Services      | Service listings, providers, appointment slots, service bookings           |
+  1074→| Operations    | Support tickets, incidents, tasks, audit logs                              |
+  1075→| Analytics     | Event records, daily aggregates, attribution, conversion reports           |
+  1076→| Integrations  | Webhook events, external calendar feeds, synchronization jobs              |
+  1077→| Content       | Destination pages, categories, FAQs, editorial articles                    |
+  1078→
+  1079→### Essential data integrity rules
+  1080→
+  1081→- Use stable unique IDs for all primary entities.
+  1082→- Add database indexes to frequently queried fields.
+  1083→- Use foreign keys and enforce ownership relationships.
+  1084→- Validate dates, prices, currencies, and status transitions.
+  1085→- Store timestamps consistently and handle local dates correctly.
+  1086→- Preserve financial records and booking history.
+  1087→- Use transactions for critical inventory and payment-state changes.
+  1088→- Avoid duplicate processing of payment webhooks.
+  1089→- Protect personally identifiable information.
+  1090→- Apply retention and deletion policies.
+  1091→- Maintain backups and test restoration procedures.
+  1092→
+  1093→## 19. Backend API specification
+  1094→
+  1095→The following is a suggested API contract for Stayora. These are proposed endpoints, not Airbnb's private APIs.
+  1096→
+  1097→| API group       | Example endpoints                                        | Purpose                                |
+  1098→| --------------- | -------------------------------------------------------- | -------------------------------------- |
+  1099→| Authentication  | `POST /api/auth/register`, `POST /api/auth/login`        | Identity and sessions                  |
+  1100→| Search          | `GET /api/search`, `GET /api/destinations`               | Search and discovery                   |
+  1101→| Listings        | `GET /api/listings/:id`, `POST /api/listings`            | Public listing and host CRUD           |
+  1102→| Availability    | `GET /api/listings/:id/availability`                     | Calendar and available inventory       |
+  1103→| Quotes          | `POST /api/quotes`                                       | Calculate itemized price               |
+  1104→| Bookings        | `POST /api/bookings`, `GET /api/bookings/:id`            | Create and retrieve reservations       |
+  1105→| Booking changes | `POST /api/bookings/:id/change-requests`                 | Modify reservations                    |
+  1106→| Cancellations   | `POST /api/bookings/:id/cancellations`                   | Cancel under applicable policy         |
+  1107→| Payments        | `POST /api/payments`, `POST /api/webhooks/payments`      | Payment initiation and provider events |
+  1108→| Payouts         | `GET /api/host/payouts`                                  | Host payout history                    |
+  1109→| Messages        | `GET /api/conversations`, `POST /api/messages`           | Guest-host messaging                   |
+  1110→| Wishlists       | `GET /api/wishlists`, `POST /api/wishlists`              | Saved properties                       |
+  1111→| Reviews         | `POST /api/reviews`, `GET /api/listings/:id/reviews`     | Review submission and retrieval        |
+  1112→| Notifications   | `GET /api/notifications`, `PATCH /api/notifications/:id` | Notification center                    |
+  1113→| Support         | `POST /api/support/tickets`                              | Customer support                       |
+  1114→| Admin           | `/api/admin/*`                                           | Protected operations and moderation    |
+  1115→| Analytics       | `/api/analytics/*`                                       | Approved dashboards and reports        |
+  1116→
+  1117→### API requirements
+  1118→
+  1119→- Authenticate protected endpoints.
+  1120→- Authorize resource ownership and role permissions.
+  1121→- Validate every request on the server.
+  1122→- Apply pagination to collection endpoints.
+  1123→- Use consistent error responses.
+  1124→- Rate-limit sensitive actions.
+  1125→- Use idempotency keys for critical payment and booking operations.
+  1126→- Validate webhook signatures.
+  1127→- Log important state changes without exposing secrets.
+  1128→- Avoid trusting prices, permissions, or payment success supplied by the client.
+  1129→
+  1130→## 20. System architecture and infrastructure
+  1131→
+  1132→### Recommended production components
+  1133→
+  1134→| Component          | Responsibility                                                       |
+  1135→| ------------------ | -------------------------------------------------------------------- |
+  1136→| Frontend           | Responsive public site, guest dashboard, host dashboard, admin panel |
+  1137→| Backend            | Authentication, business logic, booking rules, permissions           |
+  1138→| PostgreSQL         | Users, listings, inventory, bookings, transactions, audit records    |
+  1139→| Redis              | Caching, rate limits, temporary coordination, background-job support |
+  1140→| Object storage     | Property photos, attachments, approved documents                     |
+  1141→| Search engine      | Full-text search, filtering, geospatial search, ranking              |
+  1142→| Payment provider   | Secure payment processing, refunds, supported marketplace payouts    |
+  1143→| Maps provider      | Geocoding, maps, destination suggestions, distance calculations      |
+  1144→| Background workers | Emails, image processing, reports, synchronization, retry jobs       |
+  1145→| Email provider     | Verification, confirmations, receipts, alerts                        |
+  1146→| Monitoring         | Errors, uptime, latency, job failures, infrastructure metrics        |
+  1147→
+  1148→A modular monolith is a sensible initial architecture: one backend application with separate modules for identity, listings, bookings, payments, messaging, and administration. This is easier to develop and operate than starting with many microservices, while still allowing modules to be separated later if justified.
+  1149→
+  1150→## 21. Security, reliability, and performance
+  1151→
+  1152→A platform with payments and customer data must include these requirements from the beginning.
+  1153→
+  1154→### Security
+  1155→
+  1156→- Secure password hashing.
+  1157→- Protected sessions and authentication tokens.
+  1158→- Role-based and resource-level authorization.
+  1159→- Protection against SQL injection, XSS, CSRF, and SSRF.
+  1160→- Input validation and output encoding.
+  1161→- Upload type, size, and content validation.
+  1162→- Secure secret management.
+  1163→- Rate limits and brute-force protection.
+  1164→- Payment webhook signature verification.
+  1165→- Audit trails for financial and administrative actions.
+  1166→- Data encryption in transit and appropriate encryption at rest.
+  1167→- Least-privilege access to customer and financial data.
+  1168→
+  1169→### Performance
+  1170→
+  1171→- Responsive image delivery and modern image formats.
+  1172→- Lazy loading below the fold.
+  1173→- Image thumbnails and responsive variants.
+  1174→- Database indexing and query optimization.
+  1175→- Pagination and bounded result sets.
+  1176→- Caching of appropriate public data.
+  1177→- Background processing for slow operations.
+  1178→- CDN delivery for public assets.
+  1179→- Monitoring of Core Web Vitals.
+  1180→- Graceful handling of external provider outages.
+  1181→
+  1182→### Reliability
+  1183→
+  1184→- Automated backups.
+  1185→- Tested database restoration.
+  1186→- Retry policies for transient failures.
+  1187→- Idempotent payment and booking operations.
+  1188→- Dead-letter handling for repeatedly failing background jobs.
+  1189→- Monitoring and alerts.
+  1190→- Health checks.
+  1191→- Structured logs.
+  1192→- Deployment rollback strategy.
+  1193→- Database migration procedures.
+  1194→
+  1195→## 22. Complete testing checklist
+  1196→
+  1197→Use this checklist to verify that Stayora works as a real booking platform rather than a collection of static screens.
+  1198→
+  1199→## Acceptance checklist
+  1200→
+  1201→0 / 42
+  1202→
+  1203→### Authentication
+  1204→
+  1205→Register with valid information
+  1206→
+  1207→Reject invalid email and weak passwords
+  1208→
+  1209→Verify email and recover password
+  1210→
+  1211→Protect private dashboard routes
+  1212→
+  1213→Prevent unauthorized role access
+  1214→
+  1215→### Search and listings
+  1216→
+  1217→Search by destination and dates
+  1218→
+  1219→Apply and clear filters
+  1220→
+  1221→Display accurate prices for selected dates
+  1222→
+  1223→Hide unavailable inventory
+  1224→
+  1225→Open listing details and image gallery
+  1226→
+  1227→Handle empty results and deleted listings
+  1228→
+  1229→### Booking
+  1230→
+  1231→Validate date range and occupancy
+  1232→
+  1233→Reject overlapping reservations
+  1234→
+  1235→Recalculate prices at checkout
+  1236→
+  1237→Prevent duplicate booking submissions
+  1238→
+  1239→Handle payment success and failure
+  1240→
+  1241→Expire temporary inventory holds
+  1242→
+  1243→Apply cancellation and refund rules
+  1244→
+  1245→### Guest dashboard
+  1246→
+  1247→Display upcoming and past trips
+  1248→
+  1249→Show accurate booking and payment status
+  1250→
+  1251→Modify eligible reservations
+  1252→
+  1253→Submit eligible reviews
+  1254→
+  1255→Save and remove wishlist items
+  1256→
+  1257→Send and receive messages
+  1258→
+  1259→### Host dashboard
+  1260→
+  1261→Create, edit, preview, and publish listing
+  1262→
+  1263→Upload and reorder photos
+  1264→
+  1265→Manage calendar and prices
+  1266→
+  1267→View reservation requests
+  1268→
+  1269→Manage messages and earnings
+  1270→
+  1271→View analytics based on actual records
+  1272→
+  1273→### Admin
+  1274→
+  1275→Enforce administrator permissions
+  1276→
+  1277→Search and moderate listings
+  1278→
+  1279→Review user reports and support cases
+  1280→
+  1281→Audit financial changes
+  1282→
+  1283→Handle refunds through authorized workflows
+  1284→
+  1285→Export permitted reports
+  1286→
+  1287→### Security and performance
+  1288→
+  1289→Validate resource ownership
+  1290→
+  1291→Test rate limits and malicious input
+  1292→
+  1293→Verify payment webhooks
+  1294→
+  1295→Test simultaneous booking requests
+  1296→
+  1297→Restore a database backup
+  1298→
+  1299→Test mobile layouts and accessibility
+  1300→
+  1301→&#x20;Copy checklistReset
+  1302→
+  1303→Check off tests as you verify them. This tracks your selections in the current interactive view; it does not run automated tests against your application.
+  1304→
+  1305→## 23. Suggested delivery roadmap
+  1306→
+  1307→| Milestone             | Deliverables                                              | Completion criteria                                       |
+  1308→| --------------------- | --------------------------------------------------------- | --------------------------------------------------------- |
+  1309→| 1. Marketplace UI     | Homepage, search, property details, responsive navigation | All main pages render correctly and navigate              |
+  1310→| 2. Identity and data  | Authentication, profiles, listings, photos                | Data persists and permissions work                        |
+  1311→| 3. Availability       | Calendar, blocked dates, nightly rates                    | Date and occupancy rules are enforced                     |
+  1312→| 4. Reservations       | Checkout, booking records, confirmation                   | End-to-end booking flow works without duplicate inventory |
+  1313→| 5. Payments           | Gateway integration, refunds, reconciliation              | Provider events and financial records reconcile           |
+  1314→| 6. Dashboards         | Guest trips, host operations, messaging                   | Each role has functional workflows                        |
+  1315→| 7. Administration     | Users, listings, bookings, support, reporting             | Authorized operational tasks work                         |
+  1316→| 8. Quality and launch | Security, performance, backups, testing                   | Critical acceptance tests pass                            |
+  1317→
+  1318→## 24. Final master feature inventory
+  1319→
+  1320→The full scope for an Airbnb-inspired Stayora platform should include:
+  1321→
+  1322→- Public website and destination discovery.
+  1323→- Search, advanced filters, map, and ranking.
+  1324→- Property listings, photos, amenities, and house rules.
+  1325→- Guest registration, authentication, profile, and security.
+  1326→- Wishlists and saved properties.
+  1327→- Availability and pricing engine.
+  1328→- Reservation creation, changes, cancellations, and refunds.
+  1329→- Secure payment processing and host payouts.
+  1330→- Guest trips and reservation management.
+  1331→- Host dashboard and listing creation wizard.
+  1332→- Host calendar and reservation management.
+  1333→- Host inbox and guest communication.
+  1334→- Earnings, payouts, and analytics.
+  1335→- Reviews and reputation management.
+  1336→- Experiences and services marketplace.
+  1337→- Provider-specific scheduling and inventory.
+  1338→- Notifications and background jobs.
+  1339→- Trust, safety, fraud prevention, and reporting.
+  1340→- Customer support and incident management.
+  1341→- Admin panel and role-based access.
+  1342→- SEO, marketing, analytics, and conversion optimization.
+  1343→- AI-powered discovery and recommendations.
+  1344→- Internationalization and regional pricing.
+  1345→- API integrations and infrastructure monitoring.
+  1346→- Automated testing, security, backups, and operational recovery.
+  1347→
+  1348→My recommendation: Build these as interconnected, functional modules while keeping your current Stayora design unchanged. Prioritize accurate availability, transparent pricing, booking integrity, payments, and role permissions before advanced AI and marketplace expansion. Those foundational systems are what make the product a functioning booking platform rather than just an Airbnb-inspired interface.

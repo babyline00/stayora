@@ -1,0 +1,1348 @@
+# Airbnb — Complete Features & Functions Master Specification
+
+This expanded specification covers Airbnb's major marketplace capabilities and the additional features required to build a complete, production-ready Airbnb-style platform for Stayora.
+
+It goes beyond a list of website pages. It defines what each module should do, the actions users can perform, the business rules behind those actions, the admin controls, and the systems that connect everything.
+
+The Stayora design must remain consistent with your existing direction: navy blue, white, peach, and orange; left sidebar navigation; clean typography; rounded cards; soft shadows; and a simple, modern interface. The goal is to expand functionality without redesigning your existing pages.
+
+## 1. Complete platform overview
+
+### 01
+
+Public website
+
+Homepage, discovery, search, categories, destination pages, property details
+
+### 02
+
+Guest account
+
+Registration, login, profile, preferences, security, saved items
+
+### 03
+
+Search and discovery
+
+Filters, maps, sorting, availability-aware results, recommendations
+
+### 04
+
+Booking engine
+
+Calendar, pricing, checkout, confirmation, changes, cancellations
+
+### 05
+
+Guest dashboard
+
+Trips, payments, wishlists, messages, reviews, support
+
+### 06
+
+Host dashboard
+
+Listings, calendar, reservations, inbox, earnings, analytics
+
+### 07
+
+Experiences and services
+
+Activity bookings, service bookings, provider management
+
+### 08
+
+Messaging and notifications
+
+Guest-host conversations, alerts, email, push notifications
+
+### 09
+
+Payments and finance
+
+Charges, fees, taxes, refunds, payouts, invoices, reconciliation
+
+### 10
+
+Trust and safety
+
+Verification, fraud prevention, reports, disputes, incident management
+
+### 11
+
+Admin and support
+
+Users, listings, bookings, moderation, customer service, permissions
+
+### 12
+
+Growth and analytics
+
+SEO, marketing campaigns, conversion tracking, retention, reporting
+
+### 13
+
+Integrations and infrastructure
+
+Maps, search indexing, storage, external calendars, APIs, monitoring
+
+## 2. Homepage and public website
+
+### 2.1 Header and navigation
+
+- Stayora logo and home navigation.
+- Main categories for homes, experiences, and services.
+- Search bar with destination, dates, and guest count.
+- Language and currency selector.
+- Help and support links.
+- Login and registration.
+- Guest profile menu when logged in.
+- Wishlist shortcut.
+- Become a host / hosting dashboard access.
+- Responsive mobile navigation and mobile menu.
+- Sticky header where appropriate.
+- Active navigation states and accessible keyboard controls.
+
+### 2.2 Homepage content
+
+- Hero section with prominent search.
+- Destination autocomplete and popular destinations.
+- Featured properties and recently added listings.
+- Category-based discovery.
+- Recommended stays.
+- Trending destinations and seasonal collections.
+- Property cards with images, location, price, and rating.
+- Recently viewed listings.
+- Personalized recommendations for returning users.
+- Promotional campaigns and discount labels.
+- Trust messaging and host recruitment section.
+- Experiences and services discovery sections.
+- FAQ, footer navigation, contact information, and legal links.
+
+### 2.3 Property cards
+
+Each property card should support:
+
+- Main image and image carousel.
+- Property name or short description.
+- Location and distance where available.
+- Property category and key features.
+- Nightly price and applicable pricing labels.
+- Average rating and review count.
+- Availability-aware price preview.
+- Wishlist save/unsave button.
+- Discount or special-offer badge when eligible.
+- Guest capacity and bedroom information where useful.
+- Navigation to property details.
+- Image loading placeholders and broken-image fallback.
+- Responsive layouts for desktop, tablet, and mobile.
+
+Business rule: A card must not imply that a property is available for selected dates unless the availability service confirms it.
+
+## 3. Search, filters, and discovery engine
+
+### 3.1 Search inputs
+
+| Feature              | Function                                                     |
+| -------------------- | ------------------------------------------------------------ |
+| Destination          | Search by city, region, country, neighborhood, or landmark   |
+| Autocomplete         | Suggest matching locations as the user types                 |
+| Flexible dates       | Search flexible weekends, weeks, or longer trips             |
+| Check-in / check-out | Validate dates and stay duration                             |
+| Guest selector       | Adults, children, infants, and pets                          |
+| Property category    | Villas, apartments, cabins, rooms, and other supported types |
+| Map search           | Find properties in the visible geographic area               |
+| Recent searches      | Restore previous destinations and search criteria            |
+| Search URL           | Preserve filters and dates when sharing a result page        |
+
+### 3.2 Advanced filters
+
+- Minimum and maximum budget.
+- Price per night and estimated total stay price.
+- Entire place, private room, or shared room.
+- Number of bedrooms, beds, and bathrooms.
+- Pool, Wi-Fi, kitchen, parking, workspace, air conditioning, and other amenities.
+- Pet-friendly accommodation.
+- Accessibility requirements.
+- Instant Book eligibility.
+- Guest rating and review count.
+- Cancellation terms.
+- Special property categories.
+- Family-friendly and long-stay criteria.
+- Host and property attributes supported by the platform.
+- Available dates and minimum-night requirements.
+
+### 3.3 Sorting options
+
+- Recommended.
+- Price: lowest first.
+- Price: highest first.
+- Highest-rated properties.
+- Most-reviewed properties.
+- Distance from a selected location.
+- Recently added properties.
+- Relevance to the selected filters.
+
+### 3.4 Search engine functions
+
+1. Normalize destination and date inputs.
+2. Validate guest count and trip dates.
+3. Retrieve properties matching hard filters.
+4. Exclude unavailable or restricted inventory.
+5. Apply price and occupancy rules.
+6. Rank eligible properties.
+7. Return paginated or progressively loaded results.
+8. Display accurate counts and applied filters.
+9. Support clearing individual filters or all filters.
+10. Preserve search state during navigation.
+11. Handle empty results with useful alternative suggestions.
+12. Cache safe, reusable search data without serving stale booking availability as authoritative.
+
+Advanced features: map clustering, geospatial queries, synonym matching, typo tolerance, multilingual destination search, natural-language search, and personalized ranking.
+
+## 4. Property detail page
+
+The property page should contain all information a guest needs before committing to a reservation.
+
+## Property page sections
+
+01
+
+Photo gallery
+
+Cover image, multiple photos, room galleries, fullscreen viewer, keyboard navigation, and image loading states.
+
+02
+
+Property overview
+
+Title, category, location, guest capacity, beds, bedrooms, bathrooms, rating, and review count.
+
+03
+
+Host information
+
+Host profile, languages, hosting history, response metrics where available, and verification indicators.
+
+04
+
+Description
+
+Property overview, highlights, nearby attractions, intended guest experience, and accommodation details.
+
+05
+
+Amenities
+
+Grouped facilities, included amenities, unavailable facilities, accessibility information, and special equipment.
+
+06
+
+Room details
+
+Sleeping arrangements, bed types, bathrooms, private/shared spaces, and room photographs.
+
+07
+
+Availability calendar
+
+Date selection, blocked nights, minimum stay, arrival restrictions, and nightly rates.
+
+08
+
+Price summary
+
+Nightly subtotal, discounts, cleaning charges, service fees, taxes, and final total.
+
+09
+
+House rules
+
+Check-in and check-out times, smoking, parties, pets, occupancy, and other restrictions.
+
+10
+
+Reviews
+
+Overall rating, rating breakdown, written reviews, photos where supported, and review sorting.
+
+11
+
+Location
+
+Map, approximate or disclosed address, nearby amenities, and location context.
+
+12
+
+Booking panel
+
+Date and guest selectors, availability check, reserve action, request-to-book flow where applicable.
+
+### Property actions
+
+- Save to a wishlist.
+- Remove from a wishlist.
+- Share a listing.
+- Copy a listing link.
+- Ask the host a question.
+- Select dates and guest count.
+- View itemized pricing.
+- Start checkout.
+- Report a listing.
+- Navigate to similar properties.
+- Return to search without losing filters.
+
+## 5. Guest authentication and account management
+
+### Registration and login
+
+- Email and password registration.
+- Email verification.
+- Phone verification where required.
+- Supported social sign-in providers.
+- Password reset.
+- Secure session creation and logout.
+- Optional multi-factor authentication.
+- Rate limiting and suspicious-login detection.
+- Session expiry and account recovery.
+- Terms and privacy consent records.
+
+### Guest profile
+
+- Profile photo.
+- Display name and permitted personal details.
+- Short biography.
+- Language and currency preferences.
+- Country or region settings.
+- Contact details and verification status.
+- Notification preferences.
+- Saved payment methods through a compliant payment provider.
+- Account deletion request.
+- Data export and privacy requests.
+- Login history and active-session management.
+- Privacy and visibility controls.
+
+### Guest dashboard navigation
+
+Recommended Stayora menu:
+
+- Overview.
+- My Trips.
+- Upcoming reservations.
+- Current stays.
+- Past trips.
+- Wishlists.
+- Messages.
+- Reviews.
+- Payments and transactions.
+- Refunds.
+- Notifications.
+- Profile and security.
+- Help and support.
+
+### Guest dashboard overview
+
+Display upcoming trip cards, booking status, arrival dates, unpaid balances where applicable, unread messages, pending reviews, recent saved properties, and support updates.
+
+Each card should link to the relevant action rather than showing static, nonfunctional information.
+
+## 6. Booking engine and reservation management
+
+This module requires the strongest validation because it controls inventory and financial transactions.
+
+### 6.1 Availability rules
+
+- Check-in must precede check-out.
+- Enforce maximum occupancy.
+- Enforce minimum and maximum stay duration.
+- Prevent reservations on blocked dates.
+- Prevent overlapping confirmed reservations.
+- Support preparation buffers between bookings.
+- Enforce advance-booking windows.
+- Support minimum lead time.
+- Support check-in and check-out restrictions.
+- Support seasonal availability.
+- Account for local dates and time zones.
+- Allow authorized hosts to block personal dates.
+- Revalidate availability during checkout and before confirmation.
+
+### 6.2 Reservation creation
+
+1. Receive selected property, dates, guests, and guest identity.
+2. Recalculate availability and price on the server.
+3. Create a temporary inventory hold where the chosen booking model supports it.
+4. Create the booking with a unique reference.
+5. Initiate payment or host approval as required.
+6. Process the payment provider's authoritative result.
+7. Confirm the reservation atomically with inventory updates.
+8. Send confirmation notifications.
+9. Update the guest dashboard, host dashboard, and calendar.
+10. Record the transaction and audit events.
+
+A temporary hold must expire safely. A payment failure must not permanently block inventory, and retrying a request must not create duplicate reservations.
+
+### 6.3 Booking detail page
+
+Include:
+
+- Reservation reference.
+- Property and host information.
+- Check-in and check-out.
+- Number and type of guests.
+- Reservation status.
+- Payment status and amount due.
+- Itemized booking price.
+- Cancellation policy.
+- Host contact and message history.
+- Check-in instructions when available.
+- Change-request history.
+- Cancellation and refund information.
+- Downloadable receipt or invoice where supported.
+- Support action and incident reporting.
+
+### 6.4 Modify and cancel reservations
+
+- Change dates when availability permits.
+- Change guest count within occupancy rules.
+- Recalculate the price and any difference.
+- Request host approval where required.
+- Display the consequences of a change before submission.
+- Calculate cancellation eligibility and refund amount.
+- Record the cancellation reason.
+- Notify the host and guest.
+- Release inventory when appropriate.
+- Process any refund separately from the cancellation event.
+- Preserve historical booking and financial records.
+
+## 7. Pricing, discounts, fees, and taxes
+
+A marketplace needs a dedicated pricing engine rather than a single price field on each listing.
+
+### Host pricing controls
+
+- Base nightly rate.
+- Weekend rates.
+- Seasonal rates.
+- Date-specific overrides.
+- Weekly and monthly discounts.
+- Early-booking discounts.
+- Last-minute discounts.
+- Promotional rates.
+- Minimum and maximum stay.
+- Cleaning fee.
+- Extra-guest fee where permitted.
+- Security-deposit or damage-policy handling where legally and operationally supported.
+- Currency selection subject to supported markets.
+
+### Pricing calculation
+
+A recommended model:
+
+\\[ \text{Accommodation Subtotal} =\sum\_{d=\text{check-in}}^{\text{check-out}-1} \text{Nightly Rate}(d) \\]
+
+\\[ \text{Pre-Tax Total} =\text{Subtotal}-\text{Discounts}+\text{Fees} \\]
+
+\\[ \text{Final Total} =\text{Pre-Tax Total}+\text{Applicable Taxes} \\]
+
+This is a conceptual formula. The actual calculation order, fee basis, tax treatment, rounding, and currency conversion rules must be explicitly defined for each supported market.
+
+### Pricing functions
+
+- Calculate a quote before checkout.
+- Return an itemized breakdown.
+- Recalculate quotes when dates or guest counts change.
+- Validate coupon eligibility and expiry.
+- Prevent incompatible discounts from being stacked.
+- Store the quote and price components associated with a confirmed booking.
+- Record currency and rounding rules.
+- Display the total cost transparently.
+- Generate receipts and transaction reports.
+- Reconcile booking amounts with payment records.
+
+## 8. Payment gateway and financial management
+
+### Guest payments
+
+- Supported credit and debit cards.
+- Digital wallets or regional methods where available.
+- Secure payment-method tokenization.
+- Payment authorization and capture where supported.
+- Full or partial payments if the business model permits.
+- Scheduled payment collection where supported.
+- Payment retry and failure recovery.
+- Payment confirmation and receipts.
+- Refund tracking.
+- Payment history and downloadable transaction records.
+
+### Host payouts
+
+- Host payout profile.
+- Supported bank or payment-provider account.
+- Identity or tax information where required.
+- Payout eligibility checks.
+- Payout schedule.
+- Pending, processing, completed, and failed payouts.
+- Payout statement and transaction references.
+- Adjustments and deductions.
+- Payout reconciliation.
+- Alerts for missing or invalid payout details.
+
+### Admin finance
+
+- Gross booking value.
+- Platform commission.
+- Host earnings.
+- Guest service fees.
+- Tax components.
+- Refund liability.
+- Chargebacks and payment disputes.
+- Payout reconciliation.
+- Financial reporting by date, country, and currency.
+
+Important: Never store raw card numbers or CVV codes in the Stayora database. Use a payment provider and store only permitted references and transaction metadata. Payment provider capabilities, marketplace payout eligibility, and regional requirements must be verified before implementation.
+
+## 9. Host dashboard — full feature specification
+
+The host workspace should have consistent left-side navigation and dedicated screens for every major workflow.
+
+### 9.1 Host dashboard overview
+
+- Total revenue and net earnings.
+- Upcoming reservations.
+- Pending booking requests.
+- Occupancy rate.
+- Average nightly rate.
+- Average booking value.
+- Listing views and booking conversion.
+- Calendar availability.
+- Unread messages.
+- Check-ins and check-outs.
+- Listing quality alerts.
+- Payout status.
+- Recent reviews.
+- Recommended actions.
+
+KPIs must be calculated from real data and clearly distinguish gross booking value, host earnings, and amounts actually paid out.
+
+### 9.2 Listing creation wizard
+
+Use a multi-step wizard with saved progress.
+
+Step 1
+
+Property type
+
+Choose the accommodation type and hosting format.
+
+Step 2
+
+Location
+
+Address, map position, country, region, and postal code.
+
+Step 3
+
+Capacity
+
+Guests, bedrooms, beds, bathrooms, and sleeping arrangements.
+
+Step 4
+
+Amenities
+
+Facilities, safety equipment, accessibility, and internet.
+
+Step 5
+
+Photos
+
+Upload, reorder, caption, select cover image, and validate files.
+
+Step 6
+
+Description
+
+Title, summary, detailed description, and highlights.
+
+Step 7
+
+Rules
+
+Check-in/out, pets, smoking, parties, and guest restrictions.
+
+Step 8
+
+Availability
+
+Booking window, blocked dates, minimum stay, and preparation time.
+
+Step 9
+
+Pricing
+
+Nightly rates, seasonal pricing, discounts, and applicable fees.
+
+Step 10
+
+Review and publish
+
+Preview the listing, validate required fields, and publish or save as draft.
+
+### 9.3 Listing management
+
+- View all listings.
+- Search and filter by status.
+- Draft, published, paused, and archived states.
+- Edit listing details.
+- Duplicate listing settings where permitted.
+- Preview as a guest.
+- Publish or unpublish.
+- Upload and organize images.
+- Update amenities and house rules.
+- Edit pricing and discounts.
+- Manage availability.
+- View listing performance.
+- Review guest feedback.
+- Resolve listing-quality warnings.
+- Archive or remove listings subject to booking and retention rules.
+
+### 9.4 Host calendar
+
+- Monthly, multi-month, and date-range views.
+- Reserved, available, blocked, and pending dates.
+- Nightly prices displayed on dates.
+- Date-range selection.
+- Bulk block and unblock.
+- Bulk price updates.
+- Minimum-stay adjustments.
+- Check-in/out restrictions.
+- Preparation gaps between stays.
+- Availability windows.
+- Seasonal price rules.
+- External calendar import/export where supported.
+- Conflict warnings.
+- Synchronization status and error recovery.
+- Calendar navigation by listing.
+
+### 9.5 Reservation management
+
+- Reservation list and search.
+- Filter by booking status and dates.
+- View guest details.
+- Review booking requests.
+- Accept or decline requests where the reservation model requires it.
+- Confirmed, upcoming, current, and completed bookings.
+- Booking modification requests.
+- Cancellation and refund history.
+- Guest messages.
+- Check-in and check-out tasks.
+- Downloadable booking reports.
+- Reservation-linked incident reports.
+
+### 9.6 Host inbox
+
+- Conversation list.
+- Search messages.
+- Filter unread and reservation-related conversations.
+- Guest profile and reservation context.
+- Text and supported attachments.
+- Saved replies.
+- Quick responses.
+- Message timestamps and delivery status where available.
+- Notification preferences.
+- Report or block controls where applicable.
+- Support escalation.
+- Read/unread state.
+- Unanswered-message indicators.
+
+### 9.7 Earnings and payouts
+
+- Earnings overview.
+- Gross reservation value.
+- Fees and adjustments.
+- Net host earnings.
+- Pending payout balance.
+- Payout history.
+- Failed payout alerts.
+- Payment-method management.
+- Transaction details.
+- Booking-to-payout reconciliation.
+- Monthly and annual summaries.
+- Export to CSV.
+- Downloadable statements.
+
+### 9.8 Pricing and discounts
+
+- Base nightly rate.
+- Calendar-specific rates.
+- Weekend pricing.
+- Seasonal pricing.
+- Weekly and monthly discounts.
+- Promotion rules.
+- Minimum and maximum stays.
+- Extra guest charges where allowed.
+- Cleaning charges.
+- Pricing preview for selected dates.
+- Effective-date controls.
+- Price change history.
+
+### 9.9 Reviews and analytics
+
+- Review list.
+- Rating distribution.
+- Response workflow where supported.
+- Guest feedback trends.
+- Listing impressions.
+- Listing detail views.
+- Wishlist saves.
+- Booking conversion.
+- Cancellation rates.
+- Occupancy trends.
+- Average nightly rate.
+- Revenue trends.
+- Comparison with prior periods.
+- Downloadable reports.
+
+### 9.10 Co-hosting and team management
+
+- Invite a co-host.
+- Assign listings.
+- Configure permissions.
+- Set up operational responsibilities.
+- Manage shared communication.
+- Review co-host activity.
+- Remove access.
+- Keep financial and identity settings restricted to authorized users.
+
+## 10. Guest-host messaging and notifications
+
+### Messaging functions
+
+- Conversation creation and retrieval.
+- Booking-linked conversations.
+- Pre-booking inquiries.
+- Host and guest replies.
+- Message history.
+- Unread counters.
+- File and image attachments subject to limits.
+- Spam and abuse reporting.
+- Conversation search.
+- Message retention policies.
+- Moderation and audit support.
+- Real-time delivery through WebSockets or a managed messaging service where appropriate.
+
+### Notification events
+
+| Event                         | Recipient                        |
+| ----------------------------- | -------------------------------- |
+| Account verification          | Guest or host                    |
+| Booking request received      | Host                             |
+| Booking confirmed             | Guest and host                   |
+| Booking declined or expired   | Guest                            |
+| Payment succeeded or failed   | Guest                            |
+| Reservation modified          | Guest and host                   |
+| Reservation cancelled         | Guest and host                   |
+| Refund initiated or completed | Guest                            |
+| New message received          | Relevant recipient               |
+| Check-in approaching          | Guest and host where appropriate |
+| Payout processing or failure  | Host                             |
+| Review reminder               | Eligible guest or host           |
+| Support ticket update         | Requester                        |
+
+Include notification preferences, retry handling, duplicate-event prevention, delivery logs, and a notification center in the dashboard.
+
+## 11. Wishlists and saved properties
+
+- Create multiple wishlists.
+- Rename and delete wishlists.
+- Save and remove properties.
+- Add notes where supported.
+- Share a wishlist using an authorized link.
+- Set private or shared visibility.
+- View listing availability for planned dates.
+- Sort saved properties.
+- Remove unavailable or deleted listings gracefully.
+- Display price changes or availability changes when supported.
+- Sync wishlist changes across the user's devices.
+
+## 12. Reviews, ratings, and reputation
+
+### Guest reviews
+
+- Submit reviews after an eligible reservation.
+- Rating and written feedback.
+- Category-level ratings where appropriate.
+- Optional image attachments if supported.
+- Review editing within defined rules.
+- Review submission deadlines.
+- Duplicate-review prevention.
+- Moderation and abuse reporting.
+
+### Host reviews
+
+- Review eligible guests.
+- Feedback about communication and rule compliance.
+- Review submission eligibility.
+- Moderation and appeals where supported.
+
+### Rating logic
+
+- Calculate averages from eligible published ratings.
+- Store rating counts and moderation state.
+- Avoid allowing the same booking to generate unlimited reviews.
+- Recalculate aggregates when a review changes state.
+- Make review visibility rules explicit.
+- Prevent unauthorized users from altering reviews.
+
+## 13. Trust, safety, and identity verification
+
+- Email and phone verification.
+- Identity verification provider integration.
+- Host verification indicators.
+- Listing authenticity checks.
+- Duplicate and suspicious listing detection.
+- Risk-based login challenges.
+- Rate limits for authentication and booking.
+- Fraud signals and suspicious transaction review.
+- Report listing, user, message, or review.
+- Incident reporting.
+- Safety support workflow.
+- Account restriction and suspension.
+- Appeals and reinstatement workflow.
+- Evidence and case documentation.
+- Permission-based access to sensitive information.
+- Audit logs for administrative actions.
+- Secure handling of personal information.
+- Data deletion and retention policies.
+
+Identity verification, legal compliance, insurance, and property safety requirements vary by country. These features should be implemented through suitable providers and documented procedures rather than treated as a single universal checkbox.
+
+## 14. Experiences and services marketplace
+
+For a complete Airbnb-style platform, these should be separate product categories with their own listing fields and booking logic.
+
+### Experiences
+
+- Activity title and description.
+- Host or organizer profile.
+- Photos and activity highlights.
+- Destination and meeting point.
+- Duration and scheduled sessions.
+- Participant capacity.
+- Price per participant.
+- Age restrictions and requirements.
+- Cancellation rules.
+- Available dates and times.
+- Reservation and payment.
+- Guest messages and instructions.
+- Reviews and ratings.
+- Host schedule and attendee management.
+
+### Services
+
+- Service category.
+- Provider profile and qualifications.
+- Service description and photos.
+- Service location or service area.
+- Duration and appointment slots.
+- Base price and package options.
+- Availability and capacity.
+- Required preparation or customer information.
+- Booking confirmation.
+- Cancellation and rescheduling.
+- Payment and provider payout.
+- Reviews, reports, and support.
+
+Key architectural rule: Do not assume that an accommodation booking, an experience reservation, and a service appointment have identical availability rules. Use shared payment and user systems, but support category-specific inventory and scheduling.
+
+## 15. Admin panel — full control center
+
+The admin panel should be a separate protected workspace with role-based permissions and audit logs.
+
+### 15.1 Admin dashboard
+
+- Total registered users.
+- Active guests and hosts.
+- Total published properties.
+- New listings awaiting review.
+- Total reservations.
+- Upcoming check-ins.
+- Cancelled reservations.
+- Gross booking value.
+- Platform revenue and commission.
+- Payment failures.
+- Pending refunds.
+- Host payout exceptions.
+- Support ticket backlog.
+- Reported content and safety incidents.
+- Booking conversion and growth charts.
+
+### 15.2 User administration
+
+- Search users by ID, name, email, or status.
+- View user profiles and account history.
+- View host and guest roles.
+- Manage account verification status based on authorized evidence.
+- Suspend or reactivate accounts.
+- Handle deletion requests.
+- Review abuse reports.
+- Restrict actions for policy violations.
+- Assign support cases.
+- Maintain a record of administrative changes.
+
+### 15.3 Property administration
+
+- View all properties.
+- Filter by draft, published, pending, or restricted.
+- Approve or reject listings when moderation is required.
+- Review property photos and descriptions.
+- Check required listing information.
+- Detect duplicate listings.
+- Review reported properties.
+- Restrict or remove violating listings.
+- Track listing changes.
+- Inspect property-related bookings and complaints.
+
+### 15.4 Booking administration
+
+- Search reservations.
+- Filter by date, guest, host, property, and status.
+- View full reservation history.
+- Inspect price breakdowns.
+- Review booking modifications.
+- Handle authorized cancellation exceptions.
+- Review refund requests.
+- Track disputes and chargebacks.
+- Access booking audit events.
+- Resolve inconsistencies between booking and payment states.
+
+### 15.5 Finance administration
+
+- Platform commission configuration.
+- Service-fee rules.
+- Transaction search.
+- Refund management.
+- Payout monitoring.
+- Failed-payment reports.
+- Chargeback records.
+- Tax reporting data.
+- Financial reconciliation.
+- Revenue by date and currency.
+- CSV exports.
+- Restricted access to sensitive payment information.
+
+### 15.6 Support and moderation
+
+- Ticket inbox.
+- Ticket assignment.
+- Priority and severity.
+- Internal notes.
+- Guest and host communication history.
+- Saved response templates.
+- Escalation rules.
+- Refund and cancellation approval permissions.
+- Complaint evidence.
+- Resolution categories.
+- Response-time reporting.
+- Ticket status history.
+
+### 15.7 Admin roles and permissions
+
+| Role                        | Typical access                               |
+| --------------------------- | -------------------------------------------- |
+| Super administrator         | Platform configuration and role management   |
+| Operations manager          | Listings, bookings, operational exceptions   |
+| Support agent               | Customer cases and permitted booking details |
+| Finance manager             | Transactions, refunds, payouts, reports      |
+| Trust and safety specialist | Verification, reports, incidents, moderation |
+| Content moderator           | Listings, reviews, reported content          |
+| Analyst                     | Aggregated analytics and approved exports    |
+
+Use the principle of least privilege. A support agent should not automatically have access to payment credentials, unrestricted user exports, or platform-wide configuration.
+
+## 16. Marketing, SEO, and growth features
+
+A marketplace also needs systems that bring in users and convert visitors into bookings.
+
+### SEO functions
+
+- Search-engine-friendly URLs.
+- Unique page titles and meta descriptions.
+- Canonical URLs.
+- XML sitemaps.
+- Robots directives.
+- Structured data where applicable.
+- Open Graph metadata.
+- Optimized image sizes and descriptive alt text.
+- Destination landing pages.
+- Internal linking.
+- Breadcrumbs.
+- Pagination handling.
+- Server-rendered or statically generated public listing content where appropriate.
+- Indexing controls for thin, duplicate, private, and filtered pages.
+- Broken-link and redirect management.
+
+### Conversion optimization
+
+- Track search-to-listing clicks.
+- Track listing-to-checkout progression.
+- Track checkout abandonment.
+- Analyze booking completion.
+- Measure filter usage.
+- Measure wishlist saves.
+- Track host registration completion.
+- Monitor listing publication conversion.
+- Run controlled A/B experiments.
+- Evaluate page performance by device and traffic source.
+
+### Marketing tools
+
+- Discount and promotional campaigns.
+- Referral programs.
+- Eligible coupon codes.
+- Guest re-engagement campaigns with consent.
+- Host acquisition landing pages.
+- Email templates and lifecycle automation.
+- Campaign attribution.
+- Landing-page analytics.
+- Content and destination guides.
+- Abandoned-booking reminders where legally permitted.
+
+Do not send promotional messages without appropriate consent or use hidden fees and misleading discounts to increase conversion.
+
+## 17. Advanced and premium features
+
+These features can be added after the core marketplace works reliably.
+
+AI travel assistant
+
+Natural-language trip planning, destination suggestions, preference extraction, and recommended properties.
+
+Personalized discovery
+
+Recommendations based on consented preferences, prior searches, saved properties, and trip requirements.
+
+Interactive trip map
+
+Property markers, clustering, neighborhood exploration, and route planning where relevant.
+
+Calendar and channel integrations
+
+External calendar synchronization, partner inventory integrations, and conflict monitoring.
+
+Revenue optimization
+
+Occupancy analysis, seasonal pricing suggestions, demand trends, and pricing experiments.
+
+Group trip planning
+
+Shared wishlists, collaborative property selection, and guest coordination.
+
+Loyalty and referrals
+
+Eligible rewards, referral tracking, promotional credits, and transparent redemption rules.
+
+Property management tools
+
+Multi-property operations, staff roles, cleaning schedules, maintenance tasks, and operational reports.
+
+Mobile applications
+
+Mobile-first booking, saved trips, push notifications, messaging, and host calendar access.
+
+Accessibility enhancements
+
+Keyboard navigation, screen-reader support, accessible forms, contrast controls, and assistive-technology testing.
+
+## 18. Database and data relationships
+
+A full implementation should account for more than just users, properties, and bookings.
+
+| Domain        | Recommended entities                                                       |
+| ------------- | -------------------------------------------------------------------------- |
+| Identity      | Users, profiles, sessions, verification records, roles, permissions        |
+| Listings      | Listings, listing photos, rooms, beds, amenities, house rules, locations   |
+| Inventory     | Availability dates, blocked dates, nightly rates, booking holds            |
+| Reservations  | Bookings, guests, booking changes, cancellations, cancellation policies    |
+| Pricing       | Quotes, quote line items, discounts, coupons, fee rules, tax records       |
+| Payments      | Payment attempts, transactions, refunds, disputes, payouts, reconciliation |
+| Communication | Conversations, messages, attachments, notification preferences             |
+| Reviews       | Reviews, rating categories, moderation decisions, reports                  |
+| Wishlists     | Wishlists, saved listing records, sharing permissions                      |
+| Experiences   | Experience listings, sessions, participant capacity, attendees             |
+| Services      | Service listings, providers, appointment slots, service bookings           |
+| Operations    | Support tickets, incidents, tasks, audit logs                              |
+| Analytics     | Event records, daily aggregates, attribution, conversion reports           |
+| Integrations  | Webhook events, external calendar feeds, synchronization jobs              |
+| Content       | Destination pages, categories, FAQs, editorial articles                    |
+
+### Essential data integrity rules
+
+- Use stable unique IDs for all primary entities.
+- Add database indexes to frequently queried fields.
+- Use foreign keys and enforce ownership relationships.
+- Validate dates, prices, currencies, and status transitions.
+- Store timestamps consistently and handle local dates correctly.
+- Preserve financial records and booking history.
+- Use transactions for critical inventory and payment-state changes.
+- Avoid duplicate processing of payment webhooks.
+- Protect personally identifiable information.
+- Apply retention and deletion policies.
+- Maintain backups and test restoration procedures.
+
+## 19. Backend API specification
+
+The following is a suggested API contract for Stayora. These are proposed endpoints, not Airbnb's private APIs.
+
+| API group       | Example endpoints                                        | Purpose                                |
+| --------------- | -------------------------------------------------------- | -------------------------------------- |
+| Authentication  | `POST /api/auth/register`, `POST /api/auth/login`        | Identity and sessions                  |
+| Search          | `GET /api/search`, `GET /api/destinations`               | Search and discovery                   |
+| Listings        | `GET /api/listings/:id`, `POST /api/listings`            | Public listing and host CRUD           |
+| Availability    | `GET /api/listings/:id/availability`                     | Calendar and available inventory       |
+| Quotes          | `POST /api/quotes`                                       | Calculate itemized price               |
+| Bookings        | `POST /api/bookings`, `GET /api/bookings/:id`            | Create and retrieve reservations       |
+| Booking changes | `POST /api/bookings/:id/change-requests`                 | Modify reservations                    |
+| Cancellations   | `POST /api/bookings/:id/cancellations`                   | Cancel under applicable policy         |
+| Payments        | `POST /api/payments`, `POST /api/webhooks/payments`      | Payment initiation and provider events |
+| Payouts         | `GET /api/host/payouts`                                  | Host payout history                    |
+| Messages        | `GET /api/conversations`, `POST /api/messages`           | Guest-host messaging                   |
+| Wishlists       | `GET /api/wishlists`, `POST /api/wishlists`              | Saved properties                       |
+| Reviews         | `POST /api/reviews`, `GET /api/listings/:id/reviews`     | Review submission and retrieval        |
+| Notifications   | `GET /api/notifications`, `PATCH /api/notifications/:id` | Notification center                    |
+| Support         | `POST /api/support/tickets`                              | Customer support                       |
+| Admin           | `/api/admin/*`                                           | Protected operations and moderation    |
+| Analytics       | `/api/analytics/*`                                       | Approved dashboards and reports        |
+
+### API requirements
+
+- Authenticate protected endpoints.
+- Authorize resource ownership and role permissions.
+- Validate every request on the server.
+- Apply pagination to collection endpoints.
+- Use consistent error responses.
+- Rate-limit sensitive actions.
+- Use idempotency keys for critical payment and booking operations.
+- Validate webhook signatures.
+- Log important state changes without exposing secrets.
+- Avoid trusting prices, permissions, or payment success supplied by the client.
+
+## 20. System architecture and infrastructure
+
+### Recommended production components
+
+| Component          | Responsibility                                                       |
+| ------------------ | -------------------------------------------------------------------- |
+| Frontend           | Responsive public site, guest dashboard, host dashboard, admin panel |
+| Backend            | Authentication, business logic, booking rules, permissions           |
+| PostgreSQL         | Users, listings, inventory, bookings, transactions, audit records    |
+| Redis              | Caching, rate limits, temporary coordination, background-job support |
+| Object storage     | Property photos, attachments, approved documents                     |
+| Search engine      | Full-text search, filtering, geospatial search, ranking              |
+| Payment provider   | Secure payment processing, refunds, supported marketplace payouts    |
+| Maps provider      | Geocoding, maps, destination suggestions, distance calculations      |
+| Background workers | Emails, image processing, reports, synchronization, retry jobs       |
+| Email provider     | Verification, confirmations, receipts, alerts                        |
+| Monitoring         | Errors, uptime, latency, job failures, infrastructure metrics        |
+
+A modular monolith is a sensible initial architecture: one backend application with separate modules for identity, listings, bookings, payments, messaging, and administration. This is easier to develop and operate than starting with many microservices, while still allowing modules to be separated later if justified.
+
+## 21. Security, reliability, and performance
+
+A platform with payments and customer data must include these requirements from the beginning.
+
+### Security
+
+- Secure password hashing.
+- Protected sessions and authentication tokens.
+- Role-based and resource-level authorization.
+- Protection against SQL injection, XSS, CSRF, and SSRF.
+- Input validation and output encoding.
+- Upload type, size, and content validation.
+- Secure secret management.
+- Rate limits and brute-force protection.
+- Payment webhook signature verification.
+- Audit trails for financial and administrative actions.
+- Data encryption in transit and appropriate encryption at rest.
+- Least-privilege access to customer and financial data.
+
+### Performance
+
+- Responsive image delivery and modern image formats.
+- Lazy loading below the fold.
+- Image thumbnails and responsive variants.
+- Database indexing and query optimization.
+- Pagination and bounded result sets.
+- Caching of appropriate public data.
+- Background processing for slow operations.
+- CDN delivery for public assets.
+- Monitoring of Core Web Vitals.
+- Graceful handling of external provider outages.
+
+### Reliability
+
+- Automated backups.
+- Tested database restoration.
+- Retry policies for transient failures.
+- Idempotent payment and booking operations.
+- Dead-letter handling for repeatedly failing background jobs.
+- Monitoring and alerts.
+- Health checks.
+- Structured logs.
+- Deployment rollback strategy.
+- Database migration procedures.
+
+## 22. Complete testing checklist
+
+Use this checklist to verify that Stayora works as a real booking platform rather than a collection of static screens.
+
+## Acceptance checklist
+
+0 / 42
+
+### Authentication
+
+Register with valid information
+
+Reject invalid email and weak passwords
+
+Verify email and recover password
+
+Protect private dashboard routes
+
+Prevent unauthorized role access
+
+### Search and listings
+
+Search by destination and dates
+
+Apply and clear filters
+
+Display accurate prices for selected dates
+
+Hide unavailable inventory
+
+Open listing details and image gallery
+
+Handle empty results and deleted listings
+
+### Booking
+
+Validate date range and occupancy
+
+Reject overlapping reservations
+
+Recalculate prices at checkout
+
+Prevent duplicate booking submissions
+
+Handle payment success and failure
+
+Expire temporary inventory holds
+
+Apply cancellation and refund rules
+
+### Guest dashboard
+
+Display upcoming and past trips
+
+Show accurate booking and payment status
+
+Modify eligible reservations
+
+Submit eligible reviews
+
+Save and remove wishlist items
+
+Send and receive messages
+
+### Host dashboard
+
+Create, edit, preview, and publish listing
+
+Upload and reorder photos
+
+Manage calendar and prices
+
+View reservation requests
+
+Manage messages and earnings
+
+View analytics based on actual records
+
+### Admin
+
+Enforce administrator permissions
+
+Search and moderate listings
+
+Review user reports and support cases
+
+Audit financial changes
+
+Handle refunds through authorized workflows
+
+Export permitted reports
+
+### Security and performance
+
+Validate resource ownership
+
+Test rate limits and malicious input
+
+Verify payment webhooks
+
+Test simultaneous booking requests
+
+Restore a database backup
+
+Test mobile layouts and accessibility
+
+&#x20;Copy checklistReset
+
+Check off tests as you verify them. This tracks your selections in the current interactive view; it does not run automated tests against your application.
+
+## 23. Suggested delivery roadmap
+
+| Milestone             | Deliverables                                              | Completion criteria                                       |
+| --------------------- | --------------------------------------------------------- | --------------------------------------------------------- |
+| 1. Marketplace UI     | Homepage, search, property details, responsive navigation | All main pages render correctly and navigate              |
+| 2. Identity and data  | Authentication, profiles, listings, photos                | Data persists and permissions work                        |
+| 3. Availability       | Calendar, blocked dates, nightly rates                    | Date and occupancy rules are enforced                     |
+| 4. Reservations       | Checkout, booking records, confirmation                   | End-to-end booking flow works without duplicate inventory |
+| 5. Payments           | Gateway integration, refunds, reconciliation              | Provider events and financial records reconcile           |
+| 6. Dashboards         | Guest trips, host operations, messaging                   | Each role has functional workflows                        |
+| 7. Administration     | Users, listings, bookings, support, reporting             | Authorized operational tasks work                         |
+| 8. Quality and launch | Security, performance, backups, testing                   | Critical acceptance tests pass                            |
+
+## 24. Final master feature inventory
+
+The full scope for an Airbnb-inspired Stayora platform should include:
+
+- Public website and destination discovery.
+- Search, advanced filters, map, and ranking.
+- Property listings, photos, amenities, and house rules.
+- Guest registration, authentication, profile, and security.
+- Wishlists and saved properties.
+- Availability and pricing engine.
+- Reservation creation, changes, cancellations, and refunds.
+- Secure payment processing and host payouts.
+- Guest trips and reservation management.
+- Host dashboard and listing creation wizard.
+- Host calendar and reservation management.
+- Host inbox and guest communication.
+- Earnings, payouts, and analytics.
+- Reviews and reputation management.
+- Experiences and services marketplace.
+- Provider-specific scheduling and inventory.
+- Notifications and background jobs.
+- Trust, safety, fraud prevention, and reporting.
+- Customer support and incident management.
+- Admin panel and role-based access.
+- SEO, marketing, analytics, and conversion optimization.
+- AI-powered discovery and recommendations.
+- Internationalization and regional pricing.
+- API integrations and infrastructure monitoring.
+- Automated testing, security, backups, and operational recovery.
+
+My recommendation: Build these as interconnected, functional modules while keeping your current Stayora design unchanged. Prioritize accurate availability, transparent pricing, booking integrity, payments, and role permissions before advanced AI and marketplace expansion. Those foundational systems are what make the product a functioning booking platform rather than just an Airbnb-inspired interface.

@@ -1,0 +1,979 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useEffect, useState } from 'react'
+     4→     4→import { useAppStore, GuestTab } from '@/store/useAppStore'
+     5→     5→import {
+     6→     6→  fetchBookings, fetchWishlists, fetchConversations, fetchMessages,
+     7→     7→  fetchNotifications, sendMessage, markRead, createReview,
+     8→     8→  cancelBooking, createSupportTicket, markNotificationRead,
+     9→     9→} from '@/lib/api'
+    10→    10→import { Button } from '@/components/ui/button'
+    11→    11→import { Input } from '@/components/ui/input'
+    12→    12→import { Textarea } from '@/components/ui/textarea'
+    13→    13→import { Label } from '@/components/ui/label'
+    14→    14→import { Badge } from '@/components/ui/badge'
+    15→    15→import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+    16→    16→import { Skeleton } from '@/components/ui/skeleton'
+    17→    17→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+    18→    18→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+    19→    19→import {
+    20→    20→  LayoutDashboard, Plane, Heart, MessageCircle, Star, CreditCard, Bell, User, LifeBuoy,
+    21→    21→  Send, ArrowRight, Calendar, MapPin, CheckCircle2, AlertCircle, Filter, Search,
+    22→    22→} from 'lucide-react'
+    23→    23→import { formatPrice, formatDate, formatRelativeDate, formatRating, CATEGORY_LABELS, CANCELLATION_LABELS } from '@/lib/format'
+    24→    24→
+    25→    25→const TABS: { id: GuestTab; label: string; icon: any }[] = [
+    26→    26→  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    27→    27→  { id: 'trips', label: 'My Trips', icon: Plane },
+    28→    28→  { id: 'wishlists', label: 'Wishlists', icon: Heart },
+    29→    29→  { id: 'messages', label: 'Messages', icon: MessageCircle },
+    30→    30→  { id: 'reviews', label: 'Reviews', icon: Star },
+    31→    31→  { id: 'payments', label: 'Payments', icon: CreditCard },
+    32→    32→  { id: 'notifications', label: 'Notifications', icon: Bell },
+    33→    33→  { id: 'profile', label: 'Profile', icon: User },
+    34→    34→  { id: 'support', label: 'Support', icon: LifeBuoy },
+    35→    35→]
+    36→    36→
+    37→    37→export function GuestDashboard() {
+    38→    38→  const { user, guestTab, setGuestTab, selectListing, openBooking, setView } = useAppStore()
+    39→    39→  const [bookings, setBookings] = useState<any[]>([])
+    40→    40→  const [wishlists, setWishlists] = useState<any[]>([])
+    41→    41→  const [conversations, setConversations] = useState<any[]>([])
+    42→    42→  const [notifications, setNotifications] = useState<any[]>([])
+    43→    43→  const [loading, setLoading] = useState(true)
+    44→    44→
+    45→    45→  const refreshAll = () => {
+    46→    46→    setLoading(true)
+    47→    47→    Promise.all([
+    48→    48→      fetchBookings('guest').then(d => setBookings(d.bookings || [])).catch(() => setBookings([])),
+    49→    49→      fetchWishlists().then(d => setWishlists(d.wishlists || [])).catch(() => setWishlists([])),
+    50→    50→      fetchConversations().then(d => setConversations(d.conversations || [])).catch(() => setConversations([])),
+    51→    51→      fetchNotifications().then(d => setNotifications(d.notifications || [])).catch(() => setNotifications([])),
+    52→    52→    ]).finally(() => setLoading(false))
+    53→    53→  }
+    54→    54→
+    55→    55→  useEffect(() => { refreshAll() }, [user?.id])
+    56→    56→
+    57→    57→  if (!user) return null
+    58→    58→
+    59→    59→  const upcoming = bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'PENDING')
+    60→    60→  const past = bookings.filter(b => b.status === 'COMPLETED')
+    61→    61→  const cancelled = bookings.filter(b => b.status === 'CANCELLED')
+    62→    62→  const unreadNotifs = notifications.filter(n => !n.isRead)
+    63→    63→
+    64→    64→  return (
+    65→    65→    <div className="mx-auto flex max-w-7xl gap-6 px-6 py-6">
+    66→    66→      {/* Left sidebar */}
+    67→    67→      <aside className="hidden w-60 shrink-0 lg:block">
+    68→    68→        <div className="sticky top-20 rounded-2xl border border-border bg-white p-2">
+    69→    69→          <div className="mb-2 flex items-center gap-3 border-b border-border p-3">
+    70→    70→            <Avatar className="h-10 w-10">
+    71→    71→              <AvatarImage src={user.avatarUrl || undefined} alt={user.name} />
+    72→    72→              <AvatarFallback className="bg-navy text-white">{user.name.split(' ').map(p => p[0]).slice(0, 2).join('')}</AvatarFallback>
+    73→    73→            </Avatar>
+    74→    74→            <div className="min-w-0">
+    75→    75→              <p className="truncate text-sm font-semibold text-navy">{user.name}</p>
+    76→    76→              <p className="truncate text-xs text-muted-foreground">Guest</p>
+    77→    77→            </div>
+    78→    78→          </div>
+    79→    79→          <nav className="space-y-0.5">
+    80→    80→            {TABS.map(t => {
+    81→    81→              const Icon = t.icon
+    82→    82→              const active = guestTab === t.id
+    83→    83→              return (
+    84→    84→                <button
+    85→    85→                  key={t.id}
+    86→    86→                  onClick={() => setGuestTab(t.id)}
+    87→    87→                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+    88→    88→                    active ? 'bg-navy text-white' : 'text-navy/80 hover:bg-peach-light/60 hover:text-navy'
+    89→    89→                  }`}
+    90→    90→                >
+    91→    91→                  <Icon className="h-4 w-4" />
+    92→    92→                  <span className="flex-1 text-left">{t.label}</span>
+    93→    93→                  {t.id === 'trips' && upcoming.length > 0 && (
+    94→    94→                    <Badge variant="secondary" className={`text-[10px] ${active ? 'bg-white/20 text-white' : ''}`}>{upcoming.length}</Badge>
+    95→    95→                  )}
+    96→    96→                  {t.id === 'notifications' && unreadNotifs.length > 0 && (
+    97→    97→                    <Badge variant="secondary" className={`text-[10px] ${active ? 'bg-white/20 text-white' : ''}`}>{unreadNotifs.length}</Badge>
+    98→    98→                  )}
+    99→    99→                </button>
+   100→   100→              )
+   101→   101→            })}
+   102→   102→          </nav>
+   103→   103→        </div>
+   104→   104→      </aside>
+   105→   105→
+   106→   106→      {/* Main content */}
+   107→   107→      <main className="min-w-0 flex-1">
+   108→   108→        {/* Mobile tab pills */}
+   109→   109→        <div className="mb-4 flex gap-1 overflow-x-auto lg:hidden">
+   110→   110→          {TABS.map(t => {
+   111→   111→            const Icon = t.icon
+   112→   112→            const active = guestTab === t.id
+   113→   113→            return (
+   114→   114→              <button
+   115→   115→                key={t.id}
+   116→   116→                onClick={() => setGuestTab(t.id)}
+   117→   117→                className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${active ? 'bg-navy text-white' : 'bg-peach-light/60 text-navy'}`}
+   118→   118→              >
+   119→   119→                <Icon className="h-3.5 w-3.5" /> {t.label}
+   120→   120→              </button>
+   121→   121→            )
+   122→   122→          })}
+   123→   123→        </div>
+   124→   124→
+   125→   125→        {guestTab === 'overview' && <OverviewTab bookings={bookings} wishlists={wishlists} conversations={conversations} notifications={notifications} loading={loading} onGoToTab={setGuestTab} />}
+   126→   126→        {guestTab === 'trips' && <TripsTab bookings={bookings} loading={loading} onRefresh={refreshAll} />}
+   127→   127→        {guestTab === 'wishlists' && <WishlistsTab wishlists={wishlists} loading={loading} />}
+   128→   128→        {guestTab === 'messages' && <MessagesTab conversations={conversations} loading={loading} onRefresh={refreshAll} />}
+   129→   129→        {guestTab === 'reviews' && <ReviewsTab bookings={bookings} loading={loading} onRefresh={refreshAll} />}
+   130→   130→        {guestTab === 'payments' && <PaymentsTab bookings={bookings} loading={loading} />}
+   131→   131→        {guestTab === 'notifications' && <NotificationsTab notifications={notifications} loading={loading} onRefresh={refreshAll} />}
+   132→   132→        {guestTab === 'profile' && <ProfileTab />}
+   133→   133→        {guestTab === 'support' && <SupportTab bookings={bookings} loading={loading} onRefresh={refreshAll} />}
+   134→   134→      </main>
+   135→   135→    </div>
+   136→   136→  )
+   137→   137→}
+   138→   138→
+   139→   139→// ============================================================
+   140→   140→// OVERVIEW TAB
+   141→   141→// ============================================================
+   142→   142→function OverviewTab({ bookings, wishlists, conversations, notifications, loading, onGoToTab }: any) {
+   143→   143→  const upcoming = bookings.filter((b: any) => b.status === 'CONFIRMED' || b.status === 'PENDING')
+   144→   144→  const next = upcoming[0]
+   145→   145→  const unreadMsgs = conversations.filter((c: any) => c.messages?.[0] && !c.messages[0].isRead && c.messages[0].senderId !== useAppStore.getState().user?.id)
+   146→   146→  const recentNotifs = notifications.slice(0, 5)
+   147→   147→
+   148→   148→  if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />
+   149→   149→
+   150→   150→  return (
+   151→   151→    <div className="space-y-6">
+   152→   152→      <div>
+   153→   153→        <h1 className="text-2xl font-bold text-navy">Welcome back</h1>
+   154→   154→        <p className="text-sm text-muted-foreground">Here's what's happening with your trips and account.</p>
+   155→   155→      </div>
+   156→   156→
+   157→   157→      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   158→   158→        <StatCard icon={Plane} label="Upcoming trips" value={upcoming.length} onClick={() => onGoToTab('trips')} />
+   159→   159→        <StatCard icon={Heart} label="Saved properties" value={wishlists.reduce((acc: number, w: any) => acc + (w.listings?.length || 0), 0)} onClick={() => onGoToTab('wishlists')} />
+   160→   160→        <StatCard icon={MessageCircle} label="Unread messages" value={unreadMsgs.length} onClick={() => onGoToTab('messages')} />
+   161→   161→        <StatCard icon={Bell} label="New notifications" value={notifications.filter((n: any) => !n.isRead).length} onClick={() => onGoToTab('notifications')} />
+   162→   162→      </div>
+   163→   163→
+   164→   164→      {next ? (
+   165→   165→        <Card>
+   166→   166→          <CardHeader>
+   167→   167→            <CardTitle className="flex items-center gap-2 text-navy"><Plane className="h-5 w-5 text-orange" /> Your next trip</CardTitle>
+   168→   168→          </CardHeader>
+   169→   169→          <CardContent>
+   170→   170→            <div className="flex items-center gap-4">
+   171→   171→              {next.listing?.photos?.[0]?.url && (
+   172→   172→                <img src={next.listing.photos[0].url} alt={next.listing.title} className="h-20 w-20 rounded-xl object-cover" />
+   173→   173→              )}
+   174→   174→              <div className="flex-1">
+   175→   175→                <h3 className="font-semibold text-navy">{next.listing?.title}</h3>
+   176→   176→                <p className="text-sm text-muted-foreground">{next.listing?.city}, {next.listing?.country}</p>
+   177→   177→                <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+   178→   178→                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(next.checkIn)} → {formatDate(next.checkOut)}</span>
+   179→   179→                  <span>Ref: {next.reference}</span>
+   180→   180→                </div>
+   181→   181→              </div>
+   182→   182→              <Badge variant="secondary" className={next.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}>
+   183→   183→                {next.status === 'CONFIRMED' ? '✓ Confirmed' : '⏳ Pending'}
+   184→   184→              </Badge>
+   185→   185→            </div>
+   186→   186→          </CardContent>
+   187→   187→        </Card>
+   188→   188→      ) : (
+   189→   189→        <Card>
+   190→   190→          <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+   191→   191→            <Plane className="h-10 w-10 text-muted-foreground" />
+   192→   192→            <h3 className="font-semibold text-navy">No upcoming trips yet</h3>
+   193→   193→            <p className="text-sm text-muted-foreground">Find your next stay and start planning.</p>
+   194→   194→          </CardContent>
+   195→   195→        </Card>
+   196→   196→      )}
+   197→   197→
+   198→   198→      <div className="grid gap-4 lg:grid-cols-2">
+   199→   199→        <Card>
+   200→   200→          <CardHeader>
+   201→   201→            <CardTitle className="flex items-center gap-2 text-navy"><MessageCircle className="h-5 w-5 text-orange" /> Recent messages</CardTitle>
+   202→   202→          </CardHeader>
+   203→   203→          <CardContent className="space-y-3">
+   204→   204→            {conversations.slice(0, 3).map((c: any) => {
+   205→   205→              const other = c.userAId === useAppStore.getState().user?.id ? c.userB : c.userA
+   206→   206→              const last = c.messages?.[0]
+   207→   207→              return (
+   208→   208→                <div key={c.id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-peach-light/50">
+   209→   209→                  <Avatar className="h-8 w-8">
+   210→   210→                    <AvatarImage src={other?.avatarUrl || undefined} alt={other?.name} />
+   211→   211→                    <AvatarFallback className="bg-peach text-navy text-xs">{other?.name.split(' ').map((p: string) => p[0]).slice(0, 2).join('')}</AvatarFallback>
+   212→   212→                  </Avatar>
+   213→   213→                  <div className="min-w-0 flex-1">
+   214→   214→                    <p className="truncate text-sm font-medium text-navy">{other?.name}</p>
+   215→   215→                    <p className="truncate text-xs text-muted-foreground">{last?.body || 'No messages yet'}</p>
+   216→   216→                  </div>
+   217→   217→                  {last && <span className="text-[10px] text-muted-foreground">{formatRelativeDate(last.sentAt)}</span>}
+   218→   218→                </div>
+   219→   219→              )
+   220→   220→            })}
+   221→   221→            {conversations.length === 0 && <p className="text-sm text-muted-foreground">No conversations yet.</p>}
+   222→   222→          </CardContent>
+   223→   223→        </Card>
+   224→   224→
+   225→   225→        <Card>
+   226→   226→          <CardHeader>
+   227→   227→            <CardTitle className="flex items-center gap-2 text-navy"><Bell className="h-5 w-5 text-orange" /> Recent notifications</CardTitle>
+   228→   228→          </CardHeader>
+   229→   229→          <CardContent className="space-y-3">
+   230→   230→            {recentNotifs.map((n: any) => (
+   231→   231→              <div key={n.id} className={`flex items-start gap-2 rounded-lg p-2 ${!n.isRead ? 'bg-peach-light/60' : ''}`}>
+   232→   232→                <div className="flex-1">
+   233→   233→                  <p className="text-sm font-medium text-navy">{n.title}</p>
+   234→   234→                  {n.body && <p className="text-xs text-muted-foreground">{n.body}</p>}
+   235→   235→                  <p className="mt-0.5 text-[10px] text-muted-foreground">{formatRelativeDate(n.createdAt)}</p>
+   236→   236→                </div>
+   237→   237→              </div>
+   238→   238→            ))}
+   239→   239→            {notifications.length === 0 && <p className="text-sm text-muted-foreground">No notifications yet.</p>}
+   240→   240→          </CardContent>
+   241→   241→        </Card>
+   242→   242→      </div>
+   243→   243→    </div>
+   244→   244→  )
+   245→   245→}
+   246→   246→
+   247→   247→function StatCard({ icon: Icon, label, value, onClick }: any) {
+   248→   248→  return (
+   249→   249→    <button onClick={onClick} className="rounded-2xl border border-border bg-white p-4 text-left transition hover:shadow-md">
+   250→   250→      <div className="mb-2 grid h-9 w-9 place-items-center rounded-lg bg-peach-light">
+   251→   251→        <Icon className="h-4 w-4 text-navy" />
+   252→   252→      </div>
+   253→   253→      <p className="text-2xl font-bold text-navy">{value}</p>
+   254→   254→      <p className="text-xs text-muted-foreground">{label}</p>
+   255→   255→    </button>
+   256→   256→  )
+   257→   257→}
+   258→   258→
+   259→   259→// ============================================================
+   260→   260→// TRIPS TAB
+   261→   261→// ============================================================
+   262→   262→function TripsTab({ bookings, loading, onRefresh }: any) {
+   263→   263→  const { showToast, selectListing, setView } = useAppStore()
+   264→   264→  const [cancelling, setCancelling] = useState<string | null>(null)
+   265→   265→
+   266→   266→  const upcoming = bookings.filter((b: any) => b.status === 'CONFIRMED' || b.status === 'PENDING')
+   267→   267→  const past = bookings.filter((b: any) => b.status === 'COMPLETED')
+   268→   268→  const cancelled = bookings.filter((b: any) => b.status === 'CANCELLED')
+   269→   269→
+   270→   270→  const handleCancel = async (bookingId: string) => {
+   271→   271→    setCancelling(bookingId)
+   272→   272→    try {
+   273→   273→      await cancelBooking(bookingId, 'Plans changed')
+   274→   274→      showToast('Booking cancelled', 'Your refund is processing.', 'success')
+   275→   275→      onRefresh()
+   276→   276→    } catch (e: any) {
+   277→   277→      showToast('Could not cancel', e.message, 'error')
+   278→   278→    } finally {
+   279→   279→      setCancelling(null)
+   280→   280→    }
+   281→   281→  }
+   282→   282→
+   283→   283→  if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />
+   284→   284→
+   285→   285→  return (
+   286→   286→    <div className="space-y-8">
+   287→   287→      <div>
+   288→   288→        <h1 className="text-2xl font-bold text-navy">My Trips</h1>
+   289→   289→        <p className="text-sm text-muted-foreground">Manage your upcoming and past reservations.</p>
+   290→   290→      </div>
+   291→   291→
+   292→   292→      <TripSection title="Upcoming" bookings={upcoming} cancelling={cancelling} onCancel={handleCancel} onGoToListing={(id: string) => { selectListing(id); setView('property') }} />
+   293→   293→      <TripSection title="Past" bookings={past} onGoToListing={(id: string) => { selectListing(id); setView('property') }} />
+   294→   294→      {cancelled.length > 0 && <TripSection title="Cancelled" bookings={cancelled} onGoToListing={(id: string) => { selectListing(id); setView('property') }} />}
+   295→   295→    </div>
+   296→   296→  )
+   297→   297→}
+   298→   298→
+   299→   299→function TripSection({ title, bookings, cancelling, onCancel, onGoToListing }: any) {
+   300→   300→  if (bookings.length === 0) return null
+   301→   301→  return (
+   302→   302→    <section>
+   303→   303→      <h2 className="mb-3 text-lg font-semibold text-navy">{title} ({bookings.length})</h2>
+   304→   304→      <div className="space-y-3">
+   305→   305→        {bookings.map((b: any) => (
+   306→   306→          <Card key={b.id}>
+   307→   307→            <CardContent className="flex items-center gap-4 p-4">
+   308→   308→              {b.listing?.photos?.[0]?.url && (
+   309→   309→                <img src={b.listing.photos[0].url} alt="" className="h-16 w-16 rounded-lg object-cover cursor-pointer" onClick={() => onGoToListing(b.listingId)} />
+   310→   310→              )}
+   311→   311→              <div className="flex-1 min-w-0">
+   312→   312→                <h3 className="font-semibold text-navy truncate cursor-pointer hover:underline" onClick={() => onGoToListing(b.listingId)}>{b.listing?.title}</h3>
+   313→   313→                <p className="text-xs text-muted-foreground flex items-center gap-1">
+   314→   314→                  <MapPin className="h-3 w-3" /> {b.listing?.city}, {b.listing?.country}
+   315→   315→                </p>
+   316→   316→                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+   317→   317→                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(b.checkIn)} → {formatDate(b.checkOut)}</span>
+   318→   318→                  <span>· {b.nights} {b.nights === 1 ? 'night' : 'nights'}</span>
+   319→   319→                  <span>· {b.adults + b.children} guest{(b.adults + b.children) === 1 ? '' : 's'}</span>
+   320→   320→                </div>
+   321→   321→              </div>
+   322→   322→              <div className="text-right shrink-0">
+   323→   323→                <p className="font-bold text-navy">{formatPrice(b.totalAmount)}</p>
+   324→   324→                <Badge variant="secondary" className={
+   325→   325→                  b.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
+   326→   326→                  b.status === 'PENDING' ? 'bg-orange-100 text-orange-700' :
+   327→   327→                  b.status === 'COMPLETED' ? 'bg-navy/10 text-navy' :
+   328→   328→                  'bg-destructive/10 text-destructive'
+   329→   329→                }>
+   330→   330→                  {b.status}
+   331→   331→                </Badge>
+   332→   332→                {(b.status === 'CONFIRMED' || b.status === 'PENDING') && onCancel && (
+   333→   333→                  <Button variant="ghost" size="sm" className="mt-1 text-destructive" disabled={cancelling === b.id} onClick={() => onCancel(b.id)}>
+   334→   334→                    {cancelling === b.id ? 'Cancelling…' : 'Cancel'}
+   335→   335→                  </Button>
+   336→   336→                )}
+   337→   337→              </div>
+   338→   338→            </CardContent>
+   339→   339→          </Card>
+   340→   340→        ))}
+   341→   341→      </div>
+   342→   342→    </section>
+   343→   343→  )
+   344→   344→}
+   345→   345→
+   346→   346→// ============================================================
+   347→   347→// WISHLISTS TAB
+   348→   348→// ============================================================
+   349→   349→function WishlistsTab({ wishlists, loading }: any) {
+   350→   350→  const { selectListing, setView, showToast, user } = useAppStore()
+   351→   351→  const [saving, setSaving] = useState<string | null>(null)
+   352→   352→
+   353→   353→  if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />
+   354→   354→
+   355→   355→  return (
+   356→   356→    <div className="space-y-6">
+   357→   357→      <div>
+   358→   358→        <h1 className="text-2xl font-bold text-navy">Wishlists</h1>
+   359→   359→        <p className="text-sm text-muted-foreground">Properties you've saved for later.</p>
+   360→   360→      </div>
+   361→   361→
+   362→   362→      {wishlists.length === 0 ? (
+   363→   363→        <Card>
+   364→   364→          <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+   365→   365→            <Heart className="h-10 w-10 text-muted-foreground" />
+   366→   366→            <h3 className="font-semibold text-navy">No saved properties yet</h3>
+   367→   367→            <p className="text-sm text-muted-foreground">Tap the heart on any property card to save it.</p>
+   368→   368→            <Button onClick={() => setView('search')} className="rounded-full bg-orange text-white">Browse stays</Button>
+   369→   369→          </CardContent>
+   370→   370→        </Card>
+   371→   371→      ) : (
+   372→   372→        wishlists.map((w: any) => (
+   373→   373→          <Card key={w.id}>
+   374→   374→            <CardHeader>
+   375→   375→              <CardTitle className="text-navy flex items-center gap-2"><Heart className="h-5 w-5 text-orange" /> {w.name}</CardTitle>
+   376→   376→            </CardHeader>
+   377→   377→            <CardContent>
+   378→   378→              {w.listings.length === 0 ? (
+   379→   379→                <p className="text-sm text-muted-foreground">No properties in this wishlist.</p>
+   380→   380→              ) : (
+   381→   381→                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+   382→   382→                  {w.listings.map((l: any) => (
+   383→   383→                    <div key={l.id} className="group cursor-pointer rounded-xl border border-border overflow-hidden" onClick={() => { selectListing(l.id); setView('property') }}>
+   384→   384→                      {l.photos?.[0]?.url && (
+   385→   385→                        <img src={l.photos[0].url} alt={l.title} className="aspect-[4/3] w-full object-cover" loading="lazy" />
+   386→   386→                      )}
+   387→   387→                      <div className="p-3">
+   388→   388→                        <p className="font-medium text-navy text-sm truncate">{l.title}</p>
+   389→   389→                        <p className="text-xs text-muted-foreground">{l.city}, {l.country}</p>
+   390→   390→                        <p className="mt-1 font-bold text-navy text-sm">{formatPrice(l.basePrice)}<span className="font-normal text-muted-foreground"> / night</span></p>
+   391→   391→                      </div>
+   392→   392→                    </div>
+   393→   393→                  ))}
+   394→   394→                </div>
+   395→   395→              )}
+   396→   396→            </CardContent>
+   397→   397→          </Card>
+   398→   398→        ))
+   399→   399→      )}
+   400→   400→    </div>
+   401→   401→  )
+   402→   402→}
+   403→   403→
+   404→   404→// ============================================================
+   405→   405→// MESSAGES TAB
+   406→   406→// ============================================================
+   407→   407→function MessagesTab({ conversations, loading, onRefresh }: any) {
+   408→   408→  const { user } = useAppStore()
+   409→   409→  const [activeConv, setActiveConv] = useState<string | null>(null)
+   410→   410→  const [messages, setMessages] = useState<any[]>([])
+   411→   411→  const [input, setInput] = useState('')
+   412→   412→  const [sending, setSending] = useState(false)
+   413→   413→  const [loadingMsgs, setLoadingMsgs] = useState(false)
+   414→   414→
+   415→   415→  useEffect(() => {
+   416→   416→    if (!activeConv) return
+   417→   417→    setLoadingMsgs(true)
+   418→   418→    fetchMessages(activeConv).then(d => {
+   419→   419→      setMessages(d.messages || [])
+   420→   420→      markRead(activeConv).then(() => onRefresh()).catch(() => {})
+   421→   421→    }).finally(() => setLoadingMsgs(false))
+   422→   422→  }, [activeConv])
+   423→   423→
+   424→   424→  const send = async () => {
+   425→   425→    if (!input.trim() || !activeConv) return
+   426→   426→    setSending(true)
+   427→   427→    try {
+   428→   428→      const r = await sendMessage({ conversationId: activeConv, body: input })
+   429→   429→      setMessages(m => [...m, r.message])
+   430→   430→      setInput('')
+   431→   431→      onRefresh()
+   432→   432→    } catch (e: any) {
+   433→   433→      // ignored
+   434→   434→    } finally {
+   435→   435→      setSending(false)
+   436→   436→    }
+   437→   437→  }
+   438→   438→
+   439→   439→  if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />
+   440→   440→
+   441→   441→  return (
+   442→   442→    <div>
+   443→   443→      <h1 className="mb-4 text-2xl font-bold text-navy">Messages</h1>
+   444→   444→      <div className="grid gap-4 md:grid-cols-[280px_1fr]">
+   445→   445→        {/* Conversations list */}
+   446→   446→        <div className="rounded-2xl border border-border bg-white overflow-hidden">
+   447→   447→          <div className="border-b border-border p-2">
+   448→   448→            <div className="relative">
+   449→   449→              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   450→   450→              <Input placeholder="Search messages" className="rounded-lg pl-8" />
+   451→   451→            </div>
+   452→   452→          </div>
+   453→   453→          <div className="max-h-[60vh] overflow-y-auto stayora-scroll">
+   454→   454→            {conversations.length === 0 ? (
+   455→   455→              <p className="p-4 text-center text-sm text-muted-foreground">No conversations</p>
+   456→   456→            ) : conversations.map((c: any) => {
+   457→   457→              const other = c.userAId === user?.id ? c.userB : c.userA
+   458→   458→              const last = c.messages?.[0]
+   459→   459→              const isUnread = last && last.senderId !== user?.id && !last.isRead
+   460→   460→              return (
+   461→   461→                <button
+   462→   462→                  key={c.id}
+   463→   463→                  onClick={() => setActiveConv(c.id)}
+   464→   464→                  className={`flex w-full items-start gap-3 border-b border-border p-3 text-left transition hover:bg-peach-light/50 ${activeConv === c.id ? 'bg-peach-light' : ''}`}
+   465→   465→                >
+   466→   466→                  <Avatar className="h-9 w-9">
+   467→   467→                    <AvatarImage src={other?.avatarUrl || undefined} alt={other?.name} />
+   468→   468→                    <AvatarFallback className="bg-peach text-navy text-xs">{other?.name.split(' ').map((p: string) => p[0]).slice(0, 2).join('')}</AvatarFallback>
+   469→   469→                  </Avatar>
+   470→   470→                  <div className="min-w-0 flex-1">
+   471→   471→                    <div className="flex items-center justify-between gap-2">
+   472→   472→                      <p className={`truncate text-sm ${isUnread ? 'font-bold text-navy' : 'font-medium text-navy/80'}`}>{other?.name}</p>
+   473→   473→                      {last && <span className="text-[10px] text-muted-foreground">{formatRelativeDate(last.sentAt)}</span>}
+   474→   474→                    </div>
+   475→   475→                    <p className={`truncate text-xs ${isUnread ? 'text-navy font-semibold' : 'text-muted-foreground'}`}>{last?.body || 'Start a conversation'}</p>
+   476→   476→                  </div>
+   477→   477→                  {isUnread && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-orange" />}
+   478→   478→                </button>
+   479→   479→              )
+   480→   480→            })}
+   481→   481→          </div>
+   482→   482→        </div>
+   483→   483→
+   484→   484→        {/* Conversation view */}
+   485→   485→        <div className="rounded-2xl border border-border bg-white flex flex-col h-[60vh]">
+   486→   486→          {!activeConv ? (
+   487→   487→            <div className="grid h-full place-items-center text-center">
+   488→   488→              <div>
+   489→   489→                <MessageCircle className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+   490→   490→                <p className="text-sm text-muted-foreground">Select a conversation to start chatting</p>
+   491→   491→              </div>
+   492→   492→            </div>
+   493→   493→          ) : loadingMsgs ? (
+   494→   494→            <div className="grid h-full place-items-center"><Skeleton className="h-12 w-12 rounded-full" /></div>
+   495→   495→          ) : (
+   496→   496→            <>
+   497→   497→              <div className="flex-1 overflow-y-auto stayora-scroll p-4 space-y-3">
+   498→   498→                {messages.map((m: any) => {
+   499→   499→                  const mine = m.senderId === user?.id
+   500→   500→                  return (
+   501→   501→                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+   502→   502→                      <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${mine ? 'bg-navy text-white' : 'bg-peach-light text-navy'}`}>
+   503→   503→                        <p>{m.body}</p>
+   504→   504→                        <p className={`mt-0.5 text-[10px] ${mine ? 'text-white/70' : 'text-muted-foreground'}`}>{formatRelativeDate(m.sentAt)}</p>
+   505→   505→                      </div>
+   506→   506→                    </div>
+   507→   507→                  )
+   508→   508→                })}
+   509→   509→              </div>
+   510→   510→              <div className="border-t border-border p-3 flex gap-2">
+   511→   511→                <Input
+   512→   512→                  value={input}
+   513→   513→                  onChange={(e) => setInput(e.target.value)}
+   514→   514→                  onKeyDown={(e) => e.key === 'Enter' && send()}
+   515→   515→                  placeholder="Type a message…"
+   516→   516→                  className="rounded-full"
+   517→   517→                />
+   518→   518→                <Button onClick={send} disabled={!input.trim() || sending} className="rounded-full bg-orange text-white">
+   519→   519→                  <Send className="h-4 w-4" />
+   520→   520→                </Button>
+   521→   521→              </div>
+   522→   522→            </>
+   523→   523→          )}
+   524→   524→        </div>
+   525→   525→      </div>
+   526→   526→    </div>
+   527→   527→  )
+   528→   528→}
+   529→   529→
+   530→   530→// ============================================================
+   531→   531→// REVIEWS TAB
+   532→   532→// ============================================================
+   533→   533→function ReviewsTab({ bookings, loading, onRefresh }: any) {
+   534→   534→  const { showToast } = useAppStore()
+   535→   535→  const [active, setActive] = useState<any | null>(null)
+   536→   536→  const [rating, setRating] = useState(5)
+   537→   537→  const [body, setBody] = useState('')
+   538→   538→  const [submitting, setSubmitting] = useState(false)
+   539→   539→  const [subratings, setSubratings] = useState<any>({ accuracy: 5, cleanliness: 5, communication: 5, location: 5, checkIn: 5, value: 5 })
+   540→   540→
+   541→   541→  const eligible = bookings.filter((b: any) => b.status === 'COMPLETED' && (!b.reviews || b.reviews.length === 0))
+   542→   542→
+   543→   543→  const submit = async () => {
+   544→   544→    if (!active) return
+   545→   545→    setSubmitting(true)
+   546→   546→    try {
+   547→   547→      await createReview({ bookingId: active.id, rating, body, subratings })
+   548→   548→      showToast('Review submitted', 'Thanks for sharing your experience!', 'success')
+   549→   549→      setActive(null)
+   550→   550→      setBody('')
+   551→   551→      setRating(5)
+   552→   552→      onRefresh()
+   553→   553→    } catch (e: any) {
+   554→   554→      showToast('Could not submit review', e.message, 'error')
+   555→   555→    } finally {
+   556→   556→      setSubmitting(false)
+   557→   557→    }
+   558→   558→  }
+   559→   559→
+   560→   560→  if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />
+   561→   561→
+   562→   562→  return (
+   563→   563→    <div className="space-y-6">
+   564→   564→      <div>
+   565→   565→        <h1 className="text-2xl font-bold text-navy">Reviews</h1>
+   566→   566→        <p className="text-sm text-muted-foreground">Share your experience with hosts and the community.</p>
+   567→   567→      </div>
+   568→   568→
+   569→   569→      {eligible.length === 0 && !active ? (
+   570→   570→        <Card>
+   571→   571→          <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+   572→   572→            <Star className="h-10 w-10 text-muted-foreground" />
+   573→   573→            <h3 className="font-semibold text-navy">No reviews to write</h3>
+   574→   574→            <p className="text-sm text-muted-foreground">You'll be able to review a property after completing a stay.</p>
+   575→   575→          </CardContent>
+   576→   576→        </Card>
+   577→   577→      ) : active ? (
+   578→   578→        <Card>
+   579→   579→          <CardHeader>
+   580→   580→            <CardTitle className="text-navy">Review {active.listing?.title}</CardTitle>
+   581→   581→          </CardHeader>
+   582→   582→          <CardContent className="space-y-4">
+   583→   583→            <div>
+   584→   584→              <Label className="mb-2 block">Overall rating</Label>
+   585→   585→              <div className="flex gap-2">
+   586→   586→                {[1, 2, 3, 4, 5].map(n => (
+   587→   587→                  <button key={n} onClick={() => setRating(n)} type="button">
+   588→   588→                    <Star className={`h-8 w-8 ${n <= rating ? 'fill-orange text-orange' : 'text-muted-foreground'}`} />
+   589→   589→                  </button>
+   590→   590→                ))}
+   591→   591→              </div>
+   592→   592→            </div>
+   593→   593→            <div>
+   594→   594→              <Label className="mb-2 block">Detailed ratings</Label>
+   595→   595→              <div className="grid gap-3 sm:grid-cols-2">
+   596→   596→                {['accuracy', 'cleanliness', 'communication', 'location', 'checkIn', 'value'].map((k) => (
+   597→   597→                  <div key={k} className="flex items-center justify-between rounded-lg border border-border p-2">
+   598→   598→                    <span className="text-xs capitalize text-navy">{k}</span>
+   599→   599→                    <div className="flex gap-1">
+   600→   600→                      {[1, 2, 3, 4, 5].map(n => (
+   601→   601→                        <button key={n} onClick={() => setSubratings((s: any) => ({ ...s, [k]: n }))} type="button">
+   602→   602→                          <Star className={`h-4 w-4 ${n <= (subratings[k] || 0) ? 'fill-orange text-orange' : 'text-muted-foreground'}`} />
+   603→   603→                        </button>
+   604→   604→                      ))}
+   605→   605→                    </div>
+   606→   606→                  </div>
+   607→   607→                ))}
+   608→   608→              </div>
+   609→   609→            </div>
+   610→   610→            <div>
+   611→   611→              <Label className="mb-2 block">Your review</Label>
+   612→   612→              <Textarea
+   613→   613→                value={body}
+   614→   614→                onChange={(e) => setBody(e.target.value)}
+   615→   615→                placeholder="Share what you loved about this stay…"
+   616→   616→                rows={5}
+   617→   617→                className="rounded-lg"
+   618→   618→              />
+   619→   619→            </div>
+   620→   620→            <div className="flex gap-2">
+   621→   621→              <Button onClick={submit} disabled={submitting} className="rounded-full bg-orange text-white">
+   622→   622→                {submitting ? 'Submitting…' : 'Submit review'}
+   623→   623→              </Button>
+   624→   624→              <Button variant="outline" onClick={() => setActive(null)} className="rounded-full">Cancel</Button>
+   625→   625→            </div>
+   626→   626→          </CardContent>
+   627→   627→        </Card>
+   628→   628→      ) : (
+   629→   629→        <div className="space-y-3">
+   630→   630→          {eligible.map((b: any) => (
+   631→   631→            <Card key={b.id}>
+   632→   632→              <CardContent className="flex items-center gap-4 p-4">
+   633→   633→                {b.listing?.photos?.[0]?.url && (
+   634→   634→                  <img src={b.listing.photos[0].url} alt="" className="h-14 w-14 rounded-lg object-cover" />
+   635→   635→                )}
+   636→   636→                <div className="flex-1 min-w-0">
+   637→   637→                  <h3 className="font-semibold text-navy truncate">{b.listing?.title}</h3>
+   638→   638→                  <p className="text-xs text-muted-foreground">{b.listing?.city} · Completed {formatDate(b.checkOut)}</p>
+   639→   639→                </div>
+   640→   640→                <Button onClick={() => setActive(b)} className="rounded-full bg-orange text-white">Write review</Button>
+   641→   641→              </CardContent>
+   642→   642→            </Card>
+   643→   643→          ))}
+   644→   644→        </div>
+   645→   645→      )}
+   646→   646→    </div>
+   647→   647→  )
+   648→   648→}
+   649→   649→
+   650→   650→// ============================================================
+   651→   651→// PAYMENTS TAB
+   652→   652→// ============================================================
+   653→   653→function PaymentsTab({ bookings, loading }: any) {
+   654→   654→  if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />
+   655→   655→
+   656→   656→  const paid = bookings.filter((b: any) => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
+   657→   657→  const refunded = bookings.filter((b: any) => b.status === 'CANCELLED')
+   658→   658→  const totalSpent = paid.reduce((s: number, b: any) => s + b.totalAmount, 0)
+   659→   659→
+   660→   660→  return (
+   661→   661→    <div className="space-y-6">
+   662→   662→      <div>
+   663→   663→        <h1 className="text-2xl font-bold text-navy">Payments</h1>
+   664→   664→        <p className="text-sm text-muted-foreground">Your payment history and receipts.</p>
+   665→   665→      </div>
+   666→   666→
+   667→   667→      <div className="grid gap-4 sm:grid-cols-3">
+   668→   668→        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total spent</p><p className="mt-1 text-2xl font-bold text-navy">{formatPrice(totalSpent)}</p></CardContent></Card>
+   669→   669→        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Successful payments</p><p className="mt-1 text-2xl font-bold text-navy">{paid.length}</p></CardContent></Card>
+   670→   670→        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Refunds</p><p className="mt-1 text-2xl font-bold text-navy">{refunded.length}</p></CardContent></Card>
+   671→   671→      </div>
+   672→   672→
+   673→   673→      <Card>
+   674→   674→        <CardHeader><CardTitle className="text-navy">Transaction history</CardTitle></CardHeader>
+   675→   675→        <CardContent>
+   676→   676→          <div className="space-y-2">
+   677→   677→            {bookings.length === 0 ? (
+   678→   678→              <p className="text-sm text-muted-foreground">No transactions yet.</p>
+   679→   679→            ) : bookings.map((b: any) => {
+   680→   680→              const isRefund = b.status === 'CANCELLED'
+   681→   681→              return (
+   682→   682→                <div key={b.id} className="flex items-center justify-between border-b border-border py-3 last:border-0">
+   683→   683→                  <div className="flex items-center gap-3">
+   684→   684→                    {b.listing?.photos?.[0]?.url && <img src={b.listing.photos[0].url} className="h-10 w-10 rounded-lg object-cover" alt="" />}
+   685→   685→                    <div>
+   686→   686→                      <p className="text-sm font-medium text-navy">{b.listing?.title}</p>
+   687→   687→                      <p className="text-xs text-muted-foreground">{b.reference} · {formatDate(b.createdAt)}</p>
+   688→   688→                    </div>
+   689→   689→                  </div>
+   690→   690→                  <div className="text-right">
+   691→   691→                    <p className={`text-sm font-semibold ${isRefund ? 'text-green-700' : 'text-navy'}`}>
+   692→   692→                      {isRefund ? `+${formatPrice(b.totalAmount)}` : `−${formatPrice(b.totalAmount)}`}
+   693→   693→                    </p>
+   694→   694→                    <Badge variant="secondary" className={
+   695→   695→                      b.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
+   696→   696→                      b.status === 'PENDING' ? 'bg-orange-100 text-orange-700' :
+   697→   697→                      b.status === 'CANCELLED' ? 'bg-blue-100 text-blue-700' :
+   698→   698→                      'bg-navy/10 text-navy'
+   699→   699→                    }>
+   700→   700→                      {isRefund ? 'Refunded' : b.status}
+   701→   701→                    </Badge>
+   702→   702→                  </div>
+   703→   703→                </div>
+   704→   704→              )
+   705→   705→            })}
+   706→   706→          </div>
+   707→   707→        </CardContent>
+   708→   708→      </Card>
+   709→   709→    </div>
+   710→   710→  )
+   711→   711→}
+   712→   712→
+   713→   713→// ============================================================
+   714→   714→// NOTIFICATIONS TAB
+   715→   715→// ============================================================
+   716→   716→function NotificationsTab({ notifications, loading, onRefresh }: any) {
+   717→   717→  const { showToast } = useAppStore()
+   718→   718→
+   719→   719→  const markAll = async () => {
+   720→   720→    try {
+   721→   721→      await markNotificationRead(undefined, true)
+   722→   722→      onRefresh()
+   723→   723→      showToast('All notifications marked as read', undefined, 'success')
+   724→   724→    } catch (e: any) {
+   725→   725→      showToast('Could not mark all read', e.message, 'error')
+   726→   726→    }
+   727→   727→  }
+   728→   728→
+   729→   729→  if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />
+   730→   730→
+   731→   731→  return (
+   732→   732→    <div className="space-y-6">
+   733→   733→      <div className="flex items-center justify-between">
+   734→   734→        <div>
+   735→   735→          <h1 className="text-2xl font-bold text-navy">Notifications</h1>
+   736→   736→          <p className="text-sm text-muted-foreground">Stay updated on your bookings, messages, and payouts.</p>
+   737→   737→        </div>
+   738→   738→        {notifications.some((n: any) => !n.isRead) && (
+   739→   739→          <Button variant="outline" onClick={markAll} className="rounded-full">Mark all read</Button>
+   740→   740→        )}
+   741→   741→      </div>
+   742→   742→
+   743→   743→      <div className="space-y-2">
+   744→   744→        {notifications.length === 0 ? (
+   745→   745→          <Card>
+   746→   746→            <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+   747→   747→              <Bell className="h-10 w-10 text-muted-foreground" />
+   748→   748→              <p className="text-sm text-muted-foreground">No notifications yet.</p>
+   749→   749→            </CardContent>
+   750→   750→          </Card>
+   751→   751→        ) : notifications.map((n: any) => (
+   752→   752→          <div key={n.id} className={`flex items-start gap-3 rounded-xl border border-border p-4 ${!n.isRead ? 'bg-peach-light/50' : 'bg-white'}`}>
+   753→   753→            <div className={`mt-0.5 grid h-8 w-8 place-items-center rounded-full ${!n.isRead ? 'bg-orange text-white' : 'bg-muted text-muted-foreground'}`}>
+   754→   754→              {n.type === 'BOOKING_CONFIRMED' ? <CheckCircle2 className="h-4 w-4" /> :
+   755→   755→               n.type === 'MESSAGE_RECEIVED' ? <MessageCircle className="h-4 w-4" /> :
+   756→   756→               n.type === 'RESERVATION_CANCELLED' ? <AlertCircle className="h-4 w-4" /> :
+   757→   757→               <Bell className="h-4 w-4" />}
+   758→   758→            </div>
+   759→   759→            <div className="flex-1">
+   760→   760→              <p className={`text-sm ${!n.isRead ? 'font-semibold text-navy' : 'font-medium text-navy/80'}`}>{n.title}</p>
+   761→   761→              {n.body && <p className="mt-0.5 text-sm text-muted-foreground">{n.body}</p>}
+   762→   762→              <p className="mt-1 text-[10px] text-muted-foreground">{formatRelativeDate(n.createdAt)}</p>
+   763→   763→            </div>
+   764→   764→            {!n.isRead && <span className="mt-1 h-2 w-2 rounded-full bg-orange" />}
+   765→   765→          </div>
+   766→   766→        ))}
+   767→   767→      </div>
+   768→   768→    </div>
+   769→   769→  )
+   770→   770→}
+   771→   771→
+   772→   772→// ============================================================
+   773→   773→// PROFILE TAB
+   774→   774→// ============================================================
+   775→   775→function ProfileTab() {
+   776→   776→  const { user, showToast } = useAppStore()
+   777→   777→  if (!user) return null
+   778→   778→
+   779→   779→  return (
+   780→   780→    <div className="space-y-6">
+   781→   781→      <div>
+   782→   782→        <h1 className="text-2xl font-bold text-navy">Profile</h1>
+   783→   783→        <p className="text-sm text-muted-foreground">Manage your personal information and preferences.</p>
+   784→   784→      </div>
+   785→   785→
+   786→   786→      <Card>
+   787→   787→        <CardContent className="p-6">
+   788→   788→          <div className="flex items-center gap-4">
+   789→   789→            <Avatar className="h-20 w-20">
+   790→   790→              <AvatarImage src={user.avatarUrl || undefined} alt={user.name} />
+   791→   791→              <AvatarFallback className="bg-navy text-white text-xl">{user.name.split(' ').map(p => p[0]).slice(0, 2).join('')}</AvatarFallback>
+   792→   792→            </Avatar>
+   793→   793→            <div>
+   794→   794→              <h2 className="text-xl font-bold text-navy">{user.name}</h2>
+   795→   795→              <p className="text-sm text-muted-foreground">{user.email}</p>
+   796→   796→              <div className="mt-1 flex gap-2">
+   797→   797→                <Badge variant="secondary" className="bg-peach-light text-navy">{user.role}</Badge>
+   798→   798→                {user.isVerified && <Badge variant="secondary" className="bg-green-100 text-green-700">✓ Verified</Badge>}
+   799→   799→                {user.isSuperhost && <Badge variant="secondary" className="bg-orange-100 text-orange-700">★ Superhost</Badge>}
+   800→   800→              </div>
+   801→   801→            </div>
+   802→   802→          </div>
+   803→   803→
+   804→   804→          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+   805→   805→            <div>
+   806→   806→              <Label>Display name</Label>
+   807→   807→              <Input defaultValue={user.name} className="mt-1 rounded-lg" />
+   808→   808→            </div>
+   809→   809→            <div>
+   810→   810→              <Label>Email</Label>
+   811→   811→              <Input defaultValue={user.email} disabled className="mt-1 rounded-lg" />
+   812→   812→            </div>
+   813→   813→            <div>
+   814→   814→              <Label>Country</Label>
+   815→   815→              <Input defaultValue={user.country || ''} placeholder="Add country" className="mt-1 rounded-lg" />
+   816→   816→            </div>
+   817→   817→            <div>
+   818→   818→              <Label>Languages</Label>
+   819→   819→              <Input defaultValue={user.role} disabled className="mt-1 rounded-lg" />
+   820→   820→            </div>
+   821→   821→            <div className="sm:col-span-2">
+   822→   822→              <Label>Bio</Label>
+   823→   823→              <Textarea defaultValue={user.bio || ''} placeholder="Tell hosts and guests about yourself…" rows={3} className="mt-1 rounded-lg" />
+   824→   824→            </div>
+   825→   825→          </div>
+   826→   826→
+   827→   827→          <div className="mt-4 flex justify-end">
+   828→   828→            <Button onClick={() => showToast('Profile updates are read-only in this demo', undefined, 'default')} className="rounded-full bg-orange text-white">Save changes</Button>
+   829→   829→          </div>
+   830→   830→        </CardContent>
+   831→   831→      </Card>
+   832→   832→
+   833→   833→      <Card>
+   834→   834→        <CardHeader><CardTitle className="text-navy">Account & security</CardTitle></CardHeader>
+   835→   835→        <CardContent className="space-y-3">
+   836→   836→          <div className="flex items-center justify-between">
+   837→   837→            <div>
+   838→   838→              <p className="text-sm font-medium text-navy">Two-factor authentication</p>
+   839→   839→              <p className="text-xs text-muted-foreground">Add an extra layer of security to your account.</p>
+   840→   840→            </div>
+   841→   841→            <Button variant="outline" size="sm" onClick={() => showToast('2FA not enabled in demo', undefined, 'default')}>Enable</Button>
+   842→   842→          </div>
+   843→   843→          <div className="flex items-center justify-between">
+   844→   844→            <div>
+   845→   845→              <p className="text-sm font-medium text-navy">Login history</p>
+   846→   846→              <p className="text-xs text-muted-foreground">See recent sign-ins to your account.</p>
+   847→   847→            </div>
+   848→   848→            <Button variant="outline" size="sm" onClick={() => showToast('No recent logins', undefined, 'default')}>View</Button>
+   849→   849→          </div>
+   850→   850→          <div className="flex items-center justify-between">
+   851→   851→            <div>
+   852→   852→              <p className="text-sm font-medium text-navy">Delete account</p>
+   853→   853→              <p className="text-xs text-muted-foreground">Permanently remove your account and data.</p>
+   854→   854→            </div>
+   855→   855→            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => showToast('Account deletion not enabled in demo', undefined, 'default')}>Delete</Button>
+   856→   856→          </div>
+   857→   857→        </CardContent>
+   858→   858→      </Card>
+   859→   859→    </div>
+   860→   860→  )
+   861→   861→}
+   862→   862→
+   863→   863→// ============================================================
+   864→   864→// SUPPORT TAB
+   865→   865→// ============================================================
+   866→   866→function SupportTab({ bookings, loading, onRefresh }: any) {
+   867→   867→  const { showToast } = useAppStore()
+   868→   868→  const [subject, setSubject] = useState('')
+   869→   869→  const [description, setDescription] = useState('')
+   870→   870→  const [category, setCategory] = useState('GENERAL')
+   871→   871→  const [priority, setPriority] = useState('NORMAL')
+   872→   872→  const [bookingId, setBookingId] = useState('')
+   873→   873→  const [submitting, setSubmitting] = useState(false)
+   874→   874→
+   875→   875→  const submit = async () => {
+   876→   876→    if (!subject) { showToast('Subject required', undefined, 'error'); return }
+   877→   877→    setSubmitting(true)
+   878→   878→    try {
+   879→   879→      await createSupportTicket({ subject, description, category, priority, bookingId: bookingId || undefined })
+   880→   880→      showToast('Ticket created', 'Our team will respond within 24 hours.', 'success')
+   881→   881→      setSubject(''); setDescription(''); setCategory('GENERAL'); setPriority('NORMAL'); setBookingId('')
+   882→   882→      onRefresh()
+   883→   883→    } catch (e: any) {
+   884→   884→      showToast('Could not create ticket', e.message, 'error')
+   885→   885→    } finally {
+   886→   886→      setSubmitting(false)
+   887→   887→    }
+   888→   888→  }
+   889→   889→
+   890→   890→  return (
+   891→   891→    <div className="space-y-6">
+   892→   892→      <div>
+   893→   893→        <h1 className="text-2xl font-bold text-navy">Support</h1>
+   894→   894→        <p className="text-sm text-muted-foreground">Get help with your bookings, payments, or account.</p>
+   895→   895→      </div>
+   896→   896→
+   897→   897→      <Card>
+   898→   898→        <CardHeader><CardTitle className="text-navy">Open a support ticket</CardTitle></CardHeader>
+   899→   899→        <CardContent className="space-y-4">
+   900→   900→          <div className="grid gap-4 sm:grid-cols-2">
+   901→   901→            <div>
+   902→   902→              <Label>Subject</Label>
+   903→   903→              <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Briefly describe your issue" className="mt-1 rounded-lg" />
+   904→   904→            </div>
+   905→   905→            <div>
+   906→   906→              <Label>Category</Label>
+   907→   907→              <Select value={category} onValueChange={setCategory}>
+   908→   908→                <SelectTrigger className="mt-1 rounded-lg"><SelectValue /></SelectTrigger>
+   909→   909→                <SelectContent>
+   910→   910→                  <SelectItem value="GENERAL">General</SelectItem>
+   911→   911→                  <SelectItem value="BOOKING">Booking</SelectItem>
+   912→   912→                  <SelectItem value="PAYMENT">Payment</SelectItem>
+   913→   913→                  <SelectItem value="LISTING">Listing</SelectItem>
+   914→   914→                  <SelectItem value="TRUST_SAFETY">Trust &amp; safety</SelectItem>
+   915→   915→                  <SelectItem value="ACCOUNT">Account</SelectItem>
+   916→   916→                </SelectContent>
+   917→   917→              </Select>
+   918→   918→            </div>
+   919→   919→          </div>
+   920→   920→          <div className="grid gap-4 sm:grid-cols-2">
+   921→   921→            <div>
+   922→   922→              <Label>Priority</Label>
+   923→   923→              <Select value={priority} onValueChange={setPriority}>
+   924→   924→                <SelectTrigger className="mt-1 rounded-lg"><SelectValue /></SelectTrigger>
+   925→   925→                <SelectContent>
+   926→   926→                  <SelectItem value="LOW">Low</SelectItem>
+   927→   927→                  <SelectItem value="NORMAL">Normal</SelectItem>
+   928→   928→                  <SelectItem value="HIGH">High</SelectItem>
+   929→   929→                  <SelectItem value="URGENT">Urgent</SelectItem>
+   930→   930→                </SelectContent>
+   931→   931→              </Select>
+   932→   932→            </div>
+   933→   933→            <div>
+   934→   934→              <Label>Related booking (optional)</Label>
+   935→   935→              <Select value={bookingId} onValueChange={setBookingId}>
+   936→   936→                <SelectTrigger className="mt-1 rounded-lg"><SelectValue placeholder="None" /></SelectTrigger>
+   937→   937→                <SelectContent>
+   938→   938→                  <SelectItem value="">None</SelectItem>
+   939→   939→                  {bookings.map((b: any) => (
+   940→   940→                    <SelectItem key={b.id} value={b.id}>{b.reference} — {b.listing?.title?.slice(0, 30)}</SelectItem>
+   941→   941→                  ))}
+   942→   942→                </SelectContent>
+   943→   943→              </Select>
+   944→   944→            </div>
+   945→   945→          </div>
+   946→   946→          <div>
+   947→   947→            <Label>Description</Label>
+   948→   948→            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Provide as much detail as possible…" rows={5} className="mt-1 rounded-lg" />
+   949→   949→          </div>
+   950→   950→          <div className="flex justify-end">
+   951→   951→            <Button onClick={submit} disabled={submitting} className="rounded-full bg-orange text-white">
+   952→   952→              {submitting ? 'Submitting…' : 'Submit ticket'}
+   953→   953→            </Button>
+   954→   954→          </div>
+   955→   955→        </CardContent>
+   956→   956→      </Card>
+   957→   957→
+   958→   958→      <Card>
+   959→   959→        <CardHeader><CardTitle className="text-navy">Quick help topics</CardTitle></CardHeader>
+   960→   960→        <CardContent className="space-y-2 text-sm">
+   961→   961→          <HelpTopic q="How do I cancel a booking?" a="Open the Trips tab, find your booking, and tap Cancel. Refunds are processed based on the cancellation policy." />
+   962→   962→          <HelpTopic q="When will I get my refund?" a="Refunds typically appear in your account within 5-10 business days, depending on your payment method." />
+   963→   963→          <HelpTopic q="How do I message my host?" a="Open the Messages tab, select a conversation, and start chatting in real-time." />
+   964→   964→          <HelpTopic q="Can I modify my dates?" a="Modifications require host approval. Open your booking details to request a change." />
+   965→   965→        </CardContent>
+   966→   966→      </Card>
+   967→   967→    </div>
+   968→   968→  )
+   969→   969→}
+   970→   970→
+   971→   971→function HelpTopic({ q, a }: { q: string; a: string }) {
+   972→   972→  return (
+   973→   973→    <div className="border-b border-border pb-2 last:border-0">
+   974→   974→      <p className="font-medium text-navy">{q}</p>
+   975→   975→      <p className="mt-1 text-muted-foreground">{a}</p>
+   976→   976→    </div>
+   977→   977→  )
+   978→   978→}
+   979→   979→
