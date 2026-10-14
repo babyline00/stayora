@@ -22,6 +22,7 @@ interface MapProps {
     title?: string
     price?: string
     rating?: number
+    coverImage?: string
     onClick?: (id: string) => void
   }>
   singleLocation?: {
@@ -32,6 +33,15 @@ interface MapProps {
   className?: string
   height?: number | string
   scrollWheelZoom?: boolean
+  /** Called when the user moves/zooms the map */
+  onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number; center: [number, number]; zoom: number }) => void
+  /** Whether to enable marker clustering for dense areas (default true) */
+  enableClustering?: boolean
+  /** Whether to show a "Search as I move the map" toggle button */
+  showSearchAsMoveToggle?: boolean
+  /** When true, fetch new listings on bounds change */
+  searchAsMove?: boolean
+  onSearchAsMoveChange?: (enabled: boolean) => void
 }
 
 export function OpenStreetMap(props: MapProps) {

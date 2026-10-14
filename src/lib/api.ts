@@ -146,8 +146,16 @@ export async function createPaymentMethod(card: { number: string; exp_month: num
   return data
 }
 
-// Map markers
-export const fetchMapMarkers = (destination?: string) => getJSON('map-markers', { destination })
+// Map markers (supports bounding box for "search as I move")
+export const fetchMapMarkers = (params: { destination?: string; north?: number; south?: number; east?: number; west?: number } = {}) => {
+  const query: Record<string, string> = {}
+  if (params.destination) query.destination = params.destination
+  if (params.north !== undefined) query.north = String(params.north)
+  if (params.south !== undefined) query.south = String(params.south)
+  if (params.east !== undefined) query.east = String(params.east)
+  if (params.west !== undefined) query.west = String(params.west)
+  return getJSON('map-markers', query)
+}
 
 // Recently viewed
 export const fetchRecentlyViewed = (ids: string[]) => getJSON('recently-viewed', { ids: ids.join(',') })
@@ -158,3 +166,7 @@ export const fetchDestination = (city: string) => getJSON('destination', { city 
 // Share wishlist
 export const shareWishlist = (wishlistId: string, recipientEmails?: string[]) =>
   postJSON('share-wishlist', { wishlistId, recipientEmails })
+
+// Update own profile (name, bio, country, avatarUrl)
+export const updateProfile = (data: { name?: string; bio?: string; country?: string; avatarUrl?: string; languages?: string; currency?: string }) =>
+  postJSON<{ user: any }>('update-profile', data)

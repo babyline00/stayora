@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel'
 import { Calendar } from '@/components/ui/calendar'
 import { Separator } from '@/components/ui/separator'
-import { Star, MapPin, Users, Bed, Bath, Heart, Share2, ShieldCheck, Zap, Clock, ChevronLeft, Wifi, Car, Snowflake, Dumbbell, Waves, Flame, Tv, TreePalm, Mountain, Utensils, Briefcase } from 'lucide-react'
+import { Star, MapPin, Users, Bed, Bath, Heart, Share2, ShieldCheck, Zap, Clock, ChevronLeft, ChevronRight, X, Wifi, Car, Snowflake, Dumbbell, Waves, Flame, Tv, TreePalm, Mountain, Utensils, Briefcase } from 'lucide-react'
 import { formatPrice, formatRating, formatNumber, AMENITY_LABELS, CATEGORY_LABELS, CANCELLATION_LABELS, toISODate, addDays } from '@/lib/format'
 import { OpenStreetMap } from '@/components/stayora/shared/open-street-map'
 
@@ -33,6 +33,18 @@ export function PropertyDetail() {
       .catch(() => showToast('Failed to load', undefined, 'error'))
       .finally(() => setLoading(false))
   }, [selectedListingId, setView, showToast])
+
+  // Keyboard nav for lightbox
+  useEffect(() => {
+    if (!galleryOpen) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setGalleryOpen(false)
+      else if (e.key === 'ArrowLeft') setGalleryIdx(i => (i - 1 + (data?.listing?.photos?.length || 1)) % (data?.listing?.photos?.length || 1))
+      else if (e.key === 'ArrowRight') setGalleryIdx(i => (i + 1) % (data?.listing?.photos?.length || 1))
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [galleryOpen, data?.listing?.photos])
 
   if (loading || !data) {
     return (
@@ -133,9 +145,14 @@ export function PropertyDetail() {
           <button
             key={p.id}
             onClick={() => { setGalleryIdx(idx); setGalleryOpen(true) }}
-            className={`relative overflow-hidden rounded-xl bg-muted ${idx === 0 ? 'aspect-[16/9] md:aspect-auto' : 'aspect-[4/3] md:aspect-auto'} ${photos.length > 5 && idx === 4 ? 'relative' : ''}`}
+            className={`group relative overflow-hidden rounded-xl bg-muted ${idx === 0 ? 'aspect-[16/9] md:aspect-auto' : 'aspect-[4/3] md:aspect-auto'}`}
           >
-            <img src={p.url} alt={p.caption || listing.title} className="h-full w-full object-cover transition hover:opacity-90" loading={idx === 0 ? 'eager' : 'lazy'} />
+            <img src={p.url} alt={p.caption || listing.title} className="h-full w-full object-cover transition group-hover:scale-105 group-hover:opacity-90" loading={idx === 0 ? 'eager' : 'lazy'} />
+            {p.caption && (
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-navy/70 to-transparent px-3 py-2 text-white opacity-0 transition group-hover:opacity-100">
+                <p className="text-xs font-medium stayora-line-clamp-2">{p.caption}</p>
+              </div>
+            )}
             {photos.length > 5 && idx === 4 && (
               <div className="absolute inset-0 grid place-items-center bg-navy/50 text-white">
                 <span className="text-sm font-semibold">+{photos.length - 5} more</span>
@@ -145,14 +162,49 @@ export function PropertyDetail() {
         ))}
       </div>
 
-      {/* Fullscreen gallery */}
-      {galleryOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-navy/95" onClick={() => setGalleryOpen(false)}>
-          <button onClick={() => setGalleryOpen(false)} className="absolute right-6 top-6 text-white/80 hover:text-white">✕</button>
-          <img src={photos[galleryIdx]?.url} alt="" className="max-h-[80vh] max-w-[90vw] object-contain" />
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+      {/* Fullscreen lightbox */}
+      {galleryOpen && photos[galleryIdx] && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-navy/95" onClick={() => setGalleryOpen(false)}>
+          {/* Top bar */}
+          <div className="flex items-center justify-between p-4 text-white">
+            <span className="text-sm font-medium">Photo {galleryIdx + 1} of {photos.length}{photos[galleryIdx]?.caption ? ` · ${photos[galleryIdx].caption}` : ''}</span>
+            <button onClick={() => setGalleryOpen(false)} className="grid h-10 w-10 place-items-center rounded-full bg-white/10 hover:bg-white/20" aria-label="Close gallery">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          {/* Image with prev/next */}
+          <div className="relative flex flex-1 items-center justify-center px-4">
+            <button
+              onClick={(e) => { e.stopPropagation(); setGalleryIdx(i => (i - 1 + photos.length) % photos.length) }}
+              className="absolute left-4 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"
+              aria-label="Previous photo"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <img
+              src={photos[galleryIdx].url}
+              alt={photos[galleryIdx]?.caption || listing.title}
+              className="max-h-[70vh] max-w-[90vw] object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button
+              onClick={(e) => { e.stopPropagation(); setGalleryIdx(i => (i + 1) % photos.length) }}
+              className="absolute right-4 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"
+              aria-label="Next photo"
+            >
+              <ChevronRight className="h-6 w-6" />
+            </button>
+          </div>
+          {/* Thumbnail strip */}
+          <div className="flex justify-center gap-2 overflow-x-auto p-4 stayora-scroll">
             {photos.map((p: any, i: number) => (
-              <button key={p.id} onClick={(e) => { e.stopPropagation(); setGalleryIdx(i) }} className={`h-2 w-2 rounded-full ${i === galleryIdx ? 'bg-white' : 'bg-white/40'}`} />
+              <button
+                key={p.id}
+                onClick={(e) => { e.stopPropagation(); setGalleryIdx(i) }}
+                className={`relative h-16 w-24 shrink-0 overflow-hidden rounded-md border-2 transition ${i === galleryIdx ? 'border-orange' : 'border-transparent opacity-60 hover:opacity-100'}`}
+              >
+                <img src={p.url} alt="" className="h-full w-full object-cover" />
+              </button>
             ))}
           </div>
         </div>

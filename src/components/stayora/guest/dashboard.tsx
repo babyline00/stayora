@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAppStore, GuestTab } from '@/store/useAppStore'
 import {
   fetchBookings, fetchWishlists, fetchConversations, fetchMessages,
@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   LayoutDashboard, Plane, Heart, MessageCircle, Star, CreditCard, Bell, User, LifeBuoy,
-  Send, ArrowRight, Calendar, MapPin, CheckCircle2, AlertCircle, Filter, Search,
+  Send, ArrowRight, Calendar, MapPin, CheckCircle2, AlertCircle, Filter, Search, Camera, Loader2,
 } from 'lucide-react'
 import { formatPrice, formatDate, formatRelativeDate, formatRating, CATEGORY_LABELS, CANCELLATION_LABELS } from '@/lib/format'
 
@@ -773,8 +773,47 @@ function NotificationsTab({ notifications, loading, onRefresh }: any) {
 // PROFILE TAB
 // ============================================================
 function ProfileTab() {
-  const { user, showToast } = useAppStore()
+  const { user, setUser, showToast } = useAppStore()
+  const [name, setName] = useState(user?.name || '')
+  const [bio, setBio] = useState(user?.bio || '')
+  const [country, setCountry] = useState(user?.country || '')
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || '')
+  const [uploading, setUploading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   if (!user) return null
+
+  const handleAvatarUpload = async (file: File) => {
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('files', file)
+      const r = await fetch('/api/upload', { method: 'POST', body: formData })
+      const data = await r.json()
+      if (!r.ok) throw new Error(data.error || 'Upload failed')
+      if (data.uploaded?.[0]?.url) setAvatarUrl(data.uploaded[0].url)
+      showToast('Avatar uploaded', 'Click Save changes to apply', 'success')
+    } catch (e: any) {
+      showToast('Upload failed', e.message, 'error')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const { updateProfile } = await import('@/lib/api')
+      const r = await updateProfile({ name, bio, country, avatarUrl })
+      setUser(r.user)
+      showToast('Profile updated', 'Your changes have been saved', 'success')
+    } catch (e: any) {
+      showToast('Could not save', e.message, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -786,10 +825,27 @@ function ProfileTab() {
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
-            <Avatar className="h-20 w-20">
-              <AvatarImage src={user.avatarUrl || undefined} alt={user.name} />
-              <AvatarFallback className="bg-navy text-white text-xl">{user.name.split(' ').map(p => p[0]).slice(0, 2).join('')}</AvatarFallback>
-            </Avatar>
+            <div className="relative group">
+              <Avatar className="h-20 w-20">
+                <AvatarImage src={avatarUrl || undefined} alt={user.name} />
+                <AvatarFallback className="bg-navy text-white text-xl">{user.name.split(' ').map(p => p[0]).slice(0, 2).join('')}</AvatarFallback>
+              </Avatar>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="absolute inset-0 grid place-items-center rounded-full bg-navy/70 text-white opacity-0 transition group-hover:opacity-100 disabled:opacity-50"
+                aria-label="Change avatar"
+              >
+                {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => { if (e.target.files?.[0]) handleAvatarUpload(e.target.files[0]) }}
+                className="hidden"
+              />
+            </div>
             <div>
               <h2 className="text-xl font-bold text-navy">{user.name}</h2>
               <p className="text-sm text-muted-foreground">{user.email}</p>
@@ -798,13 +854,14 @@ function ProfileTab() {
                 {user.isVerified && <Badge variant="secondary" className="bg-green-100 text-green-700">✓ Verified</Badge>}
                 {user.isSuperhost && <Badge variant="secondary" className="bg-orange-100 text-orange-700">★ Superhost</Badge>}
               </div>
+              <p className="mt-1 text-xs text-muted-foreground">Hover the avatar and click to upload a new photo</p>
             </div>
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <div>
               <Label>Display name</Label>
-              <Input defaultValue={user.name} className="mt-1 rounded-lg" />
+              <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 rounded-lg" />
             </div>
             <div>
               <Label>Email</Label>
@@ -812,7 +869,7 @@ function ProfileTab() {
             </div>
             <div>
               <Label>Country</Label>
-              <Input defaultValue={user.country || ''} placeholder="Add country" className="mt-1 rounded-lg" />
+              <Input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Add country" className="mt-1 rounded-lg" />
             </div>
             <div>
               <Label>Languages</Label>
@@ -820,12 +877,14 @@ function ProfileTab() {
             </div>
             <div className="sm:col-span-2">
               <Label>Bio</Label>
-              <Textarea defaultValue={user.bio || ''} placeholder="Tell hosts and guests about yourself…" rows={3} className="mt-1 rounded-lg" />
+              <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell hosts and guests about yourself…" rows={3} className="mt-1 rounded-lg" />
             </div>
           </div>
 
           <div className="mt-4 flex justify-end">
-            <Button onClick={() => showToast('Profile updates are read-only in this demo', undefined, 'default')} className="rounded-full bg-orange text-white">Save changes</Button>
+            <Button onClick={handleSave} disabled={saving} className="rounded-full bg-orange text-white">
+              {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</> : 'Save changes'}
+            </Button>
           </div>
         </CardContent>
       </Card>

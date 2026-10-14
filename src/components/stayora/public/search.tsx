@@ -57,10 +57,29 @@ export function SearchView() {
     return () => { cancelled = true; clearTimeout(t) }
   }, [queryParams])
 
-  // Fetch map markers when destination changes
+  // Fetch map markers when destination changes (initial load)
   useEffect(() => {
-    fetchMapMarkers(filters.destination).then(d => setMarkers(d.markers || [])).catch(() => {})
+    fetchMapMarkers({ destination: filters.destination }).then(d => setMarkers(d.markers || [])).catch(() => {})
   }, [filters.destination])
+
+  // State for "search as I move the map" feature
+  const [searchAsMove, setSearchAsMove] = useState(false)
+  const [mapBounds, setMapBounds] = useState<{ north: number; south: number; east: number; west: number; center: [number, number]; zoom: number } | null>(null)
+
+  // Refetch markers based on map bounds when searchAsMove is on
+  useEffect(() => {
+    if (!searchAsMove || !mapBounds) return
+    const t = setTimeout(() => {
+      fetchMapMarkers({
+        destination: filters.destination,
+        north: mapBounds.north,
+        south: mapBounds.south,
+        east: mapBounds.east,
+        west: mapBounds.west,
+      }).then(d => setMarkers(d.markers || [])).catch(() => {})
+    }, 300)
+    return () => clearTimeout(t)
+  }, [searchAsMove, mapBounds, filters.destination])
 
   useEffect(() => { fetchDestinations().then(d => setDestinations(d.destinations || [])).catch(() => {}) }, [])
 
@@ -316,9 +335,16 @@ export function SearchView() {
                     lng: m.lng,
                     title: m.title,
                     price: formatPrice(m.basePrice).replace('.00', ''),
+                    rating: m.rating,
+                    coverImage: m.coverImage || undefined,
                     onClick: (id) => selectListing(id),
                   }))}
                   height="100%"
+                  scrollWheelZoom
+                  onBoundsChange={setMapBounds}
+                  showSearchAsMoveToggle
+                  searchAsMove={searchAsMove}
+                  onSearchAsMoveChange={setSearchAsMove}
                 />
               </div>
             </>

@@ -87,7 +87,7 @@ export function DestinationView() {
     Promise.resolve().then(() => { if (!cancelled) setLoading(true) })
     Promise.all([
       fetchDestination(selectedCity),
-      fetchMapMarkers(selectedCity),
+      fetchMapMarkers({ destination: selectedCity }),
     ]).then(([d, m]) => {
       if (cancelled) return
       setData(d)
@@ -153,6 +153,8 @@ export function DestinationView() {
               lng: m.lng,
               title: m.title,
               price: formatPrice(m.basePrice).replace('.00', ''),
+              rating: m.rating,
+              coverImage: m.coverImage || undefined,
               onClick: (id) => selectListing(id),
             }))}
             height={420}

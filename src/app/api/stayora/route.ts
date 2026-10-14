@@ -428,6 +428,11 @@ export async function GET(req: NextRequest) {
       case 'map-markers': {
         // Lightweight listing IDs + coords for map rendering
         const dest = url.searchParams.get('destination') || ''
+        // Optional bounding box filter (when "search as I move" is enabled)
+        const north = url.searchParams.get('north')
+        const south = url.searchParams.get('south')
+        const east = url.searchParams.get('east')
+        const west = url.searchParams.get('west')
         const where: any = { status: 'PUBLISHED' }
         if (dest) {
           where.OR = [
@@ -435,6 +440,10 @@ export async function GET(req: NextRequest) {
             { country: { contains: dest, mode: 'insensitive' } },
             { neighborhood: { contains: dest, mode: 'insensitive' } },
           ]
+        }
+        if (north && south && east && west) {
+          where.lat = { lte: parseFloat(north), gte: parseFloat(south) }
+          where.lng = { lte: parseFloat(east), gte: parseFloat(west) }
         }
         const listings = await db.listing.findMany({
           where,
@@ -666,10 +675,28 @@ export async function POST(req: NextRequest) {
       case 'create-listing': {
         const me = await requireAuth(['HOST', 'ADMIN'])
         if (!me) return NextResponse.json({ error: 'host account required' }, { status: 403 })
-        const { id, ...data } = body
+        const { id, photos, ...data } = body
         const slug = data.title ? `${data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString().slice(-4)}` : `listing-${Date.now()}`
         if (id) {
-          const listing = await db.listing.update({ where: { id }, data })
+          // Update existing listing (including photos replacement if provided)
+          const updateData: any = { ...data }
+          if (photos && Array.isArray(photos)) {
+            // Replace all photos
+            await db.listingPhoto.deleteMany({ where: { listingId: id } })
+            if (photos.length > 0) {
+              await db.listingPhoto.createMany({
+                data: photos.map((p: any, idx: number) => ({
+                  listingId: id,
+                  url: p.url,
+                  caption: p.caption || null,
+                  position: idx,
+                  isCover: idx === 0,
+                })),
+              })
+              updateData.coverImage = photos[0].url
+            }
+          }
+          const listing = await db.listing.update({ where: { id }, data: updateData })
           return NextResponse.json({ listing })
         }
         const listing = await db.listing.create({
@@ -685,11 +712,32 @@ export async function POST(req: NextRequest) {
             basePrice: data.basePrice || 5000, cleaningFee: data.cleaningFee || 0,
             minNights: data.minNights || 1,
             amenities: data.amenities || '',
-            coverImage: data.coverImage || 'https://images.unsplash.com/photo-1502672260266-1c0e6d6f3a9b?w=1200&q=80',
+            coverImage: data.coverImage || photos?.[0]?.url || 'https://images.unsplash.com/photo-1502672260266-1c0e6d6f3a9b?w=1200&q=80',
             allowsPets: data.allowsPets || false, allowsSmoking: data.allowsSmoking || false, allowsParties: data.allowsParties || false,
             cancellationPolicy: data.cancellationPolicy || 'FLEXIBLE', instantBook: data.instantBook || false,
+            photos: photos && photos.length > 0 ? {
+              create: photos.map((p: any, idx: number) => ({
+                url: p.url,
+                caption: p.caption || null,
+                position: idx,
+                isCover: idx === 0,
+              })),
+            } : undefined,
           },
+          include: { photos: true },
         })
+        // Generate default availability for next 90 days
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const availabilityData = []
+        for (let d = 0; d < 90; d++) {
+          const date = new Date(today)
+          date.setDate(today.getDate() + d)
+          const isWeekend = date.getDay() === 0 || date.getDay() === 6
+          const price = isWeekend && data.weekendPrice ? data.weekendPrice : (data.basePrice || 5000)
+          availabilityData.push({ listingId: listing.id, date, isAvailable: true, priceOverride: price })
+        }
+        await db.availability.createMany({ data: availabilityData })
         return NextResponse.json({ listing })
       }
       case 'update-listing-status': {
@@ -928,6 +976,24 @@ Pick at most 3 recommendations from the listings above. If the user's request do
           data: { isPrivate: false, shareToken },
         })
         return NextResponse.json({ shareToken, shareUrl: `/?wishlist=${shareToken}` })
+      }
+      case 'update-profile': {
+        // Allow user to update their own profile (name, bio, country, avatarUrl)
+        const me = await requireAuth()
+        if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        const { name, bio, country, avatarUrl, languages, currency } = body
+        const updated = await db.user.update({
+          where: { id: me.id },
+          data: {
+            ...(name !== undefined && { name }),
+            ...(bio !== undefined && { bio }),
+            ...(country !== undefined && { country }),
+            ...(avatarUrl !== undefined && { avatarUrl }),
+            ...(languages !== undefined && { languages }),
+            ...(currency !== undefined && { currency }),
+          },
+        })
+        return NextResponse.json({ user: toSafeUser(updated) })
       }
       default:
         return NextResponse.json({ error: 'unknown op' }, { status: 400 })
