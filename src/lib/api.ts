@@ -228,3 +228,7 @@ export const startVerification = (type: string, payload?: string) => postJSON('s
 export const fetchAccountSettings = () => getJSON('account-settings')
 export const updateNotificationPreferences = (data: { emailEnabled?: boolean; pushEnabled?: boolean; smsEnabled?: boolean; marketingEnabled?: boolean }) => postJSON('update-notification-preferences', data)
 export const updateAccountSettings = (data: { phone?: string; languages?: string; currency?: string }) => postJSON('update-account-settings', data)
+
+// Calendar bulk actions
+export const calendarBulkUpdate = (data: { listingId: string; action: 'block' | 'unblock' | 'price' | 'minNights'; startDate: string; endDate: string; value?: string }) =>
+  postJSON('calendar-bulk-update', data)

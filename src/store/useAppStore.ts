@@ -94,6 +94,9 @@ interface AppState {
   // Selected host ID (for host profile view)
   selectedHostId: string | null
 
+  // Editing listing ID (when host edits an existing listing via the wizard)
+  editingListingId: string | null
+
   // Payment modal
   paymentModalOpen: boolean
   paymentData: {
@@ -117,6 +120,7 @@ interface AppState {
   selectUser: (id: string | null) => void
   selectCity: (city: string | null) => void
   selectHost: (hostId: string | null) => void
+  editListing: (listingId: string) => void
 
   setUser: (user: AppUser | null) => void
   openAuth: (mode?: 'login' | 'register') => void
@@ -183,6 +187,7 @@ export const useAppStore = create<AppState>()(
       recentlyViewed: [],
       selectedCity: null,
       selectedHostId: null,
+      editingListingId: null,
       paymentModalOpen: false,
       paymentData: null,
 
@@ -198,6 +203,7 @@ export const useAppStore = create<AppState>()(
       selectUser: (selectedUserId) => set({ selectedUserId }),
       selectCity: (selectedCity) => set({ selectedCity, view: 'destination' }),
       selectHost: (selectedHostId) => set({ selectedHostId, view: 'host-profile' }),
+      editListing: (editingListingId) => set({ editingListingId, view: 'create-listing' }),
 
       setUser: (user) => set({ user }),
       openAuth: (mode = 'login') => set({ showAuthModal: true, authMode: mode }),

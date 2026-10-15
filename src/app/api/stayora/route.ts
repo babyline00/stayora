@@ -1006,6 +1006,84 @@ export async function POST(req: NextRequest) {
         const updated = await db.listing.update({ where: { id: listingId }, data: { status } })
         return NextResponse.json({ listing: updated })
       }
+      // ============================================================
+      // CALENDAR BULK ACTIONS (block/unblock/price for date ranges)
+      // ============================================================
+      case 'calendar-bulk-update': {
+        const me = await requireAuth(['HOST', 'ADMIN'])
+        if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        const { listingId, action, startDate, endDate, value } = body
+        if (!listingId || !action || !startDate || !endDate) {
+          return NextResponse.json({ error: 'listingId, action, startDate, endDate required' }, { status: 400 })
+        }
+        const listing = await db.listing.findUnique({ where: { id: listingId } })
+        if (!listing || (listing.hostId !== me.id && me.role !== 'ADMIN')) {
+          return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+        }
+        const start = new Date(startDate)
+        const end = new Date(endDate)
+        if (start >= end) return NextResponse.json({ error: 'Start date must be before end date' }, { status: 400 })
+
+        // Generate all dates in the range
+        const dates: Date[] = []
+        const cursor = new Date(start)
+        while (cursor <= end) {
+          dates.push(new Date(cursor))
+          cursor.setDate(cursor.getDate() + 1)
+        }
+
+        if (action === 'block') {
+          // Create blocked date records
+          for (const date of dates) {
+            await db.blockedDate.upsert({
+              where: { listingId_date: { listingId, date } },
+              update: { reason: 'Host blocked' },
+              create: { listingId, date, reason: 'Host blocked' },
+            })
+            // Also mark availability as unavailable
+            await db.availability.updateMany({
+              where: { listingId, date },
+              data: { isAvailable: false },
+            })
+          }
+          await db.auditLog.create({ data: { actorId: me.id, action: 'CALENDAR_BLOCK', resource: 'Listing', resourceId: listingId, metadata: JSON.stringify({ startDate, endDate }), ip: '127.0.0.1' } })
+        } else if (action === 'unblock') {
+          // Delete blocked date records
+          await db.blockedDate.deleteMany({
+            where: { listingId, date: { gte: start, lte: end } },
+          })
+          // Mark availability as available
+          await db.availability.updateMany({
+            where: { listingId, date: { gte: start, lte: end } },
+            data: { isAvailable: true },
+          })
+          await db.auditLog.create({ data: { actorId: me.id, action: 'CALENDAR_UNBLOCK', resource: 'Listing', resourceId: listingId, metadata: JSON.stringify({ startDate, endDate }), ip: '127.0.0.1' } })
+        } else if (action === 'price') {
+          // Update nightly price override for each date
+          const priceValue = parseInt(value)
+          if (!priceValue || priceValue <= 0) return NextResponse.json({ error: 'Invalid price value' }, { status: 400 })
+          for (const date of dates) {
+            await db.availability.updateMany({
+              where: { listingId, date },
+              data: { priceOverride: priceValue },
+            })
+          }
+          await db.auditLog.create({ data: { actorId: me.id, action: 'CALENDAR_PRICE_UPDATE', resource: 'Listing', resourceId: listingId, metadata: JSON.stringify({ startDate, endDate, price: priceValue }), ip: '127.0.0.1' } })
+        } else if (action === 'minNights') {
+          const minNightsValue = parseInt(value)
+          if (!minNightsValue || minNightsValue < 1) return NextResponse.json({ error: 'Invalid minimum nights value' }, { status: 400 })
+          for (const date of dates) {
+            await db.availability.updateMany({
+              where: { listingId, date },
+              data: { minNights: minNightsValue },
+            })
+          }
+          await db.auditLog.create({ data: { actorId: me.id, action: 'CALENDAR_MIN_NIGHTS', resource: 'Listing', resourceId: listingId, metadata: JSON.stringify({ startDate, endDate, minNights: minNightsValue }), ip: '127.0.0.1' } })
+        } else {
+          return NextResponse.json({ error: 'Unknown action. Use: block, unblock, price, or minNights' }, { status: 400 })
+        }
+        return NextResponse.json({ ok: true, datesUpdated: dates.length })
+      }
       case 'admin-user-action': {
         const me = await requireAuth(['ADMIN'])
         if (!me) return NextResponse.json({ error: 'forbidden' }, { status: 403 })

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '@/store/useAppStore'
-import { createListing } from '@/lib/api'
+import { createListing, fetchListing } from '@/lib/api'
 import { useAmenities, useWizardSteps, useDestinations, useCategories } from '@/hooks/use-content'
 import { resolveIcon } from '@/lib/icon-resolver'
 import { ImageUploader, UploadedImage } from '@/components/stayora/shared/image-uploader'
@@ -43,6 +43,10 @@ interface FormData {
   allowsSmoking: boolean
   allowsParties: boolean
   allowsChildren: boolean
+  // Safety disclosures
+  hasSecurityCameras: boolean
+  hasNoiseMonitor: boolean
+  hasWeapons: boolean
   minNights: number
   maxNights: number
   advanceBookingDays: number
@@ -82,6 +86,9 @@ const DEFAULTS: FormData = {
   allowsSmoking: false,
   allowsParties: false,
   allowsChildren: true,
+  hasSecurityCameras: false,
+  hasNoiseMonitor: false,
+  hasWeapons: false,
   minNights: 1,
   maxNights: 365,
   advanceBookingDays: 365,
@@ -98,13 +105,15 @@ const DEFAULTS: FormData = {
 const STORAGE_KEY = 'stayora-listing-wizard-draft'
 
 export function CreateListingWizard() {
-  const { user, setView, showToast } = useAppStore()
+  const { user, setView, showToast, editingListingId } = useAppStore()
   const [step, setStep] = useState(0)
   const [data, setData] = useState<FormData>(DEFAULTS)
   const [submitting, setSubmitting] = useState(false)
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null)
   const [showLocationHelp, setShowLocationHelp] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [editing, setEditing] = useState(false)
+  const [loadingListing, setLoadingListing] = useState(false)
 
   // Fetch content from DB
   const { amenities: allAmenities, loading: amenitiesLoading } = useAmenities()
@@ -112,8 +121,71 @@ export function CreateListingWizard() {
   const { destinations: popularDestinations } = useDestinations()
   const { categories: propertyCategories } = useCategories()
 
-  // Load draft from localStorage on mount
+  // Load existing listing data for editing
   useEffect(() => {
+    if (!editingListingId) return
+    setLoadingListing(true)
+    setEditing(true)
+    fetchListing(editingListingId)
+      .then((d: any) => {
+        const l = d.listing
+        if (!l) return
+        // Parse safety disclosures from houseRules JSON if present
+        let safety = { hasSecurityCameras: false, hasNoiseMonitor: false, hasWeapons: false }
+        try {
+          if (l.houseRules) safety = { ...safety, ...JSON.parse(l.houseRules) }
+        } catch {}
+        setData({
+          ...DEFAULTS,
+          category: l.category || 'APARTMENT',
+          roomType: l.roomType || 'ENTIRE',
+          country: l.country || '',
+          city: l.city || '',
+          neighborhood: l.neighborhood || '',
+          address: l.address || '',
+          postalCode: l.postalCode || '',
+          lat: l.lat,
+          lng: l.lng,
+          maxGuests: l.maxGuests || 2,
+          bedrooms: l.bedrooms || 1,
+          beds: l.beds || 1,
+          bathrooms: l.bathrooms || 1,
+          amenities: l.amenities ? l.amenities.split(',').filter(Boolean) : [],
+          photos: (l.photos || []).map((p: any) => ({ url: p.url, caption: p.caption || '' })),
+          coverImage: l.coverImage || '',
+          title: l.title || '',
+          description: l.description || '',
+          highlights: '',
+          checkInTime: l.checkInTime || '15:00',
+          checkOutTime: l.checkOutTime || '11:00',
+          allowsPets: l.allowsPets ?? false,
+          allowsSmoking: l.allowsSmoking ?? false,
+          allowsParties: l.allowsParties ?? false,
+          allowsChildren: l.allowsChildren ?? true,
+          hasSecurityCameras: safety.hasSecurityCameras,
+          hasNoiseMonitor: safety.hasNoiseMonitor,
+          hasWeapons: safety.hasWeapons,
+          minNights: l.minNights || 1,
+          maxNights: l.maxNights || 365,
+          advanceBookingDays: l.advanceBookingDays || 365,
+          preparationTimeHours: l.preparationTimeHours || 0,
+          basePrice: l.basePrice || 5000,
+          weekendPrice: l.weekendPrice || 6000,
+          cleaningFee: l.cleaningFee || 2500,
+          weeklyDiscountPct: l.weeklyDiscountPct || 5,
+          monthlyDiscountPct: l.monthlyDiscountPct || 10,
+          cancellationPolicy: l.cancellationPolicy || 'FLEXIBLE',
+          instantBook: l.instantBook ?? false,
+        })
+        setStep(0) // Start at first step when editing
+      })
+      .catch((e: any) => showToast('Failed to load listing', e.message, 'error'))
+      .finally(() => setLoadingListing(false))
+  }, [editingListingId, showToast])
+
+  // Load draft from localStorage on mount (only if NOT editing)
+  useEffect(() => {
+    if (editingListingId) return // Skip draft load when editing
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
@@ -240,6 +312,8 @@ export function CreateListingWizard() {
         instantBook: data.instantBook,
         weeklyDiscountPct: data.weeklyDiscountPct,
         monthlyDiscountPct: data.monthlyDiscountPct,
+        id: editing ? editingListingId : undefined,
+        houseRules: JSON.stringify({ hasSecurityCameras: data.hasSecurityCameras, hasNoiseMonitor: data.hasNoiseMonitor, hasWeapons: data.hasWeapons }),
         status: publish ? 'PUBLISHED' : 'DRAFT',
       })
       // Clear draft
@@ -284,7 +358,7 @@ export function CreateListingWizard() {
       </div>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-navy">Create a new listing</h1>
+        <h1 className="text-2xl font-bold text-navy">{editing ? 'Edit listing' : 'Create a new listing'}</h1>
         <p className="text-sm text-muted-foreground">Your progress saves automatically as a draft. Resume anytime.</p>
       </div>
 
@@ -512,33 +586,67 @@ export function CreateListingWizard() {
           )}
 
           {step === 6 && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-bold text-navy">Set your house rules</h2>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label>Check-in time</Label>
-                  <Input type="time" value={data.checkInTime} onChange={(e) => update({ checkInTime: e.target.value })} className="mt-1 rounded-lg" />
-                </div>
-                <div>
-                  <Label>Check-out time</Label>
-                  <Input type="time" value={data.checkOutTime} onChange={(e) => update({ checkOutTime: e.target.value })} className="mt-1 rounded-lg" />
+            <div className="space-y-6">
+              <h2 className="text-lg font-bold text-navy">Safety disclosures & house rules</h2>
+
+              {/* Safety disclosures */}
+              <div>
+                <Label className="text-sm font-semibold">Safety disclosures</Label>
+                <p className="text-xs text-muted-foreground mb-3">Guests must be informed about these safety features before booking. Be transparent — disclosures build trust.</p>
+                <div className="space-y-2">
+                  <label className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer has-[:checked]:border-orange has-[:checked]:bg-peach-light">
+                    <Checkbox checked={data.hasSecurityCameras} onCheckedChange={(v) => update({ hasSecurityCameras: !!v })} className="mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-navy">Exterior security cameras</p>
+                      <p className="text-xs text-muted-foreground">Cameras monitoring outdoor areas (driveway, entrances). Not permitted indoors.</p>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer has-[:checked]:border-orange has-[:checked]:bg-peach-light">
+                    <Checkbox checked={data.hasNoiseMonitor} onCheckedChange={(v) => update({ hasNoiseMonitor: !!v })} className="mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-navy">Noise monitoring device</p>
+                      <p className="text-xs text-muted-foreground">Decibel-level monitoring that alerts on excessive noise. Does not record conversations.</p>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer has-[:checked]:border-orange has-[:checked]:bg-peach-light">
+                    <Checkbox checked={data.hasWeapons} onCheckedChange={(v) => update({ hasWeapons: !!v })} className="mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-navy">Weapons on property</p>
+                      <p className="text-xs text-muted-foreground">Firearms or other weapons stored on the property. Guests must be informed for safety.</p>
+                    </div>
+                  </label>
                 </div>
               </div>
-              <div className="space-y-2">
-                {[
-                  { key: 'allowsPets', label: 'Pets allowed' },
-                  { key: 'allowsSmoking', label: 'Smoking allowed' },
-                  { key: 'allowsParties', label: 'Events/parties allowed' },
-                  { key: 'allowsChildren', label: 'Children allowed' },
-                ].map(({ key, label }) => (
-                  <label key={key} className="flex items-center gap-2 rounded-lg border border-border p-2 cursor-pointer has-[:checked]:border-orange has-[:checked]:bg-peach-light">
-                    <Checkbox
-                      checked={(data as any)[key]}
-                      onCheckedChange={(v) => update({ [key]: !!v } as any)}
-                    />
-                    <span className="text-sm">{label}</span>
-                  </label>
-                ))}
+
+              {/* House rules */}
+              <div>
+                <Label className="text-sm font-semibold">House rules</Label>
+                <div className="grid gap-3 sm:grid-cols-2 mt-2">
+                  <div>
+                    <Label>Check-in time</Label>
+                    <Input type="time" value={data.checkInTime} onChange={(e) => update({ checkInTime: e.target.value })} className="mt-1 rounded-lg" />
+                  </div>
+                  <div>
+                    <Label>Check-out time</Label>
+                    <Input type="time" value={data.checkOutTime} onChange={(e) => update({ checkOutTime: e.target.value })} className="mt-1 rounded-lg" />
+                  </div>
+                </div>
+                <div className="space-y-2 mt-3">
+                  {[
+                    { key: 'allowsPets', label: 'Pets allowed' },
+                    { key: 'allowsSmoking', label: 'Smoking allowed' },
+                    { key: 'allowsParties', label: 'Events/parties allowed' },
+                    { key: 'allowsChildren', label: 'Children allowed' },
+                  ].map(({ key, label }) => (
+                    <label key={key} className="flex items-center gap-2 rounded-lg border border-border p-2 cursor-pointer has-[:checked]:border-orange has-[:checked]:bg-peach-light">
+                      <Checkbox
+                        checked={(data as any)[key]}
+                        onCheckedChange={(v) => update({ [key]: !!v } as any)}
+                      />
+                      <span className="text-sm">{label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
           )}

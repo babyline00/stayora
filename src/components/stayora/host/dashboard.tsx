@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAppStore, HostTab } from '@/store/useAppStore'
 import {
   fetchHostDashboard, updateListingStatus, sendMessage, fetchConversations, fetchMessages,
-  markRead, fetchNotifications, createListing, fetchListingQuality,
+  markRead, fetchNotifications, createListing, fetchListingQuality, calendarBulkUpdate,
 } from '@/lib/api'
 import { formatPrice, formatDate, formatRelativeDate, formatNumber, CATEGORY_LABELS, CANCELLATION_LABELS } from '@/lib/format'
 import { Button } from '@/components/ui/button'
@@ -536,8 +536,8 @@ function ListingsTab({ listings, loading, onRefresh, onCreateListing }: any) {
               duplicating={duplicating === l.id}
               onToggle={() => handleToggleStatus(l)}
               onDuplicate={() => handleDuplicate(l)}
-              onEdit={() => showToast('Edit coming soon', 'The listing editor is not enabled in this demo.', 'default')}
-              onPreview={() => showToast('Preview coming soon', 'Preview mode is read-only in this demo.', 'default')}
+              onEdit={() => useAppStore.getState().editListing(l.id)}
+              onPreview={() => { useAppStore.getState().selectListing(l.id) }}
             />
           ))}
         </div>
@@ -783,6 +783,79 @@ function CalendarTab({ listings, bookings, loading }: any) {
               ) : (
                 <p className="text-muted-foreground">Select a date on the calendar.</p>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Bulk actions card */}
+          <Card>
+            <CardHeader><CardTitle className="text-navy">Bulk actions</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <Label className="text-xs">Start date</Label>
+                <Input type="date" id="bulk-start" className="mt-1 rounded-lg" />
+              </div>
+              <div>
+                <Label className="text-xs">End date</Label>
+                <Input type="date" id="bulk-end" className="mt-1 rounded-lg" />
+              </div>
+              <div>
+                <Label className="text-xs">Action</Label>
+                <select id="bulk-action" className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm">
+                  <option value="block">Block dates</option>
+                  <option value="unblock">Unblock dates</option>
+                  <option value="price">Update nightly price</option>
+                  <option value="minNights">Set minimum nights</option>
+                </select>
+              </div>
+              <div id="bulk-value-wrap" className="hidden">
+                <Label className="text-xs" id="bulk-value-label">Value</Label>
+                <Input type="number" id="bulk-value" className="mt-1 rounded-lg" placeholder="e.g. 15000 for $150" />
+              </div>
+              <Button
+                onClick={async () => {
+                  const startEl = document.getElementById('bulk-start') as HTMLInputElement
+                  const endEl = document.getElementById('bulk-end') as HTMLInputElement
+                  const actionEl = document.getElementById('bulk-action') as HTMLSelectElement
+                  const valueEl = document.getElementById('bulk-value') as HTMLInputElement
+                  const valueWrap = document.getElementById('bulk-value-wrap')
+                  if (!startEl?.value || !endEl?.value) { showToast('Select dates', 'Pick start and end dates first.', 'error'); return }
+                  const action = actionEl.value
+                  // Show/hide value input based on action
+                  if (action === 'price' || action === 'minNights') {
+                    valueWrap?.classList.remove('hidden')
+                    const label = document.getElementById('bulk-value-label')
+                    if (label) label.textContent = action === 'price' ? 'Price (in cents, e.g. 15000 = $150)' : 'Minimum nights'
+                    if (!valueEl?.value) { showToast('Enter a value', `Enter the ${action === 'price' ? 'price' : 'minimum nights'} value.`, 'error'); return }
+                  }
+                  try {
+                    const r: any = await calendarBulkUpdate({
+                      listingId: effectiveListingId,
+                      action,
+                      startDate: startEl.value,
+                      endDate: endEl.value,
+                      value: valueEl?.value || undefined,
+                    })
+                    showToast(`${action} applied`, `${r.datesUpdated} dates updated.`, 'success')
+                    // Refresh blocked set
+                    if (action === 'block') {
+                      const next = new Set(blocked)
+                      let cur = new Date(startEl.value)
+                      const end = new Date(endEl.value)
+                      while (cur <= end) { next.add(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate() + 1) }
+                      setBlocked(next)
+                    } else if (action === 'unblock') {
+                      const next = new Set(blocked)
+                      let cur = new Date(startEl.value)
+                      const end = new Date(endEl.value)
+                      while (cur <= end) { next.delete(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate() + 1) }
+                      setBlocked(next)
+                    }
+                  } catch (e: any) { showToast('Bulk action failed', e.message, 'error') }
+                }}
+                className="w-full rounded-full bg-orange text-white"
+              >
+                Apply to date range
+              </Button>
             </CardContent>
           </Card>
 
