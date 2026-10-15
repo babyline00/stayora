@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAppStore, HostTab } from '@/store/useAppStore'
 import {
   fetchHostDashboard, updateListingStatus, sendMessage, fetchConversations, fetchMessages,
-  markRead, fetchNotifications, createListing,
+  markRead, fetchNotifications, createListing, fetchListingQuality,
 } from '@/lib/api'
 import { formatPrice, formatDate, formatRelativeDate, formatNumber, CATEGORY_LABELS, CANCELLATION_LABELS } from '@/lib/format'
 import { Button } from '@/components/ui/button'
@@ -46,6 +46,20 @@ const TABS: { id: HostTab; label: string; icon: any }[] = [
   { id: 'verifications', label: 'Verifications', icon: ShieldCheck },
   { id: 'account-settings', label: 'Settings', icon: Settings2 },
   { id: 'create', label: 'Create listing', icon: Plus },
+]
+
+// ============================================================
+// SAVED REPLY TEMPLATES for host inbox
+// ============================================================
+const SAVED_REPLIES = [
+  { label: 'Check-in info', text: 'Hi! Check-in is from 3:00 PM. The door code is ****. I\'ll send detailed instructions 24 hours before your arrival. Let me know if you have any questions!' },
+  { label: 'Wi-Fi', text: 'The Wi-Fi network is Stayora-Guest and the password is welcometoourhome. Enjoy!' },
+  { label: 'Parking', text: 'Free parking is available in the driveway. There\'s space for one vehicle. If you need street parking, look for spots on the north side of the street.' },
+  { label: 'House rules', text: 'Quick reminder of our house rules: no smoking indoors, no parties, quiet hours after 10 PM, and please respect the neighbors. Pets are welcome with prior notice!' },
+  { label: 'Check-out', text: 'Check-out is by 11:00 AM. Please leave the keys in the lockbox, turn off all lights and AC, and dispose of trash in the bins by the garage. Thanks for being a great guest!' },
+  { label: 'Directions', text: 'The property is a 10-minute walk from the metro station. Exit the station, turn left on Main Street, and continue for 500 meters. The building is on the right with a blue door.' },
+  { label: 'Not available', text: 'Unfortunately, those dates are not available. I\'d be happy to help you find alternative dates or recommend a similar property. Let me know what works for you!' },
+  { label: 'Thanks for booking', text: 'Thank you for your booking! I\'m here to make your stay as comfortable as possible. Feel free to reach out with any questions before or during your stay.' },
 ]
 
 // ============================================================
@@ -535,6 +549,17 @@ function ListingsTab({ listings, loading, onRefresh, onCreateListing }: any) {
 function ListingCard({ listing, toggling, duplicating, onToggle, onDuplicate, onEdit, onPreview }: any) {
   const cover = listing.photos?.[0]?.url || listing.coverImage
   const statusVariant = listing.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' : listing.status === 'DRAFT' ? 'bg-muted text-muted-foreground' : 'bg-orange-100 text-orange-700'
+  const [qualityScore, setQualityScore] = useState<number | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchListingQuality(listing.id)
+      .then((r: any) => { if (!cancelled) setQualityScore(r.score) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [listing.id])
+
+  const qualityColor = qualityScore === null ? 'bg-muted text-muted-foreground' : qualityScore >= 80 ? 'bg-green-100 text-green-700' : qualityScore >= 50 ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'
 
   return (
     <Card className="overflow-hidden transition hover:shadow-md">
@@ -550,6 +575,13 @@ function ListingCard({ listing, toggling, duplicating, onToggle, onDuplicate, on
             <Badge variant="secondary" className="bg-orange text-white"><Zap className="h-3 w-3" /> Instant</Badge>
           )}
         </div>
+        {qualityScore !== null && (
+          <div className="absolute right-2 top-2">
+            <Badge variant="secondary" className={qualityColor} title="Listing completeness score">
+              {qualityScore}% complete
+            </Badge>
+          </div>
+        )}
       </div>
       <CardContent className="p-4">
         <h3 className="truncate font-semibold text-navy">{listing.title}</h3>
@@ -1057,17 +1089,33 @@ function InboxTab({ loading }: any) {
                   )
                 })}
               </div>
-              <div className="border-t border-border p-3 flex gap-2">
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && send()}
-                  placeholder="Type a message…"
-                  className="rounded-full"
-                />
-                <Button onClick={send} disabled={!input.trim() || sending} className="rounded-full bg-orange text-white">
-                  {sending ? 'Sending…' : 'Send'}
-                </Button>
+              <div className="border-t border-border p-3 space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && send()}
+                    placeholder="Type a message…"
+                    className="rounded-full"
+                  />
+                  <Button onClick={send} disabled={!input.trim() || sending} className="rounded-full bg-orange text-white shrink-0">
+                    {sending ? 'Sending…' : 'Send'}
+                  </Button>
+                </div>
+                {/* Saved replies */}
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground self-center">Quick replies:</span>
+                  {SAVED_REPLIES.map((r, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setInput(r.text)}
+                      className="rounded-full bg-peach-light/60 px-2.5 py-1 text-[10px] font-medium text-navy hover:bg-peach-light transition"
+                      title={r.text}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </>
           )}

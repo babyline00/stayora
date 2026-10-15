@@ -14,7 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Card, CardContent } from '@/components/ui/card'
 import { Slider } from '@/components/ui/slider'
-import { ArrowLeft, ArrowRight, Check, AlertCircle, Save, Trash2, Search, Loader2, MapPin, Calendar, Star } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, AlertCircle, Save, Trash2, Search, Loader2, MapPin, Calendar, Star, Zap } from 'lucide-react'
 import { CANCELLATION_LABELS } from '@/lib/format'
 
 interface FormData {
@@ -46,6 +46,7 @@ interface FormData {
   minNights: number
   maxNights: number
   advanceBookingDays: number
+  preparationTimeHours: number
   basePrice: number
   cleaningFee: number
   weekendPrice: number
@@ -84,6 +85,7 @@ const DEFAULTS: FormData = {
   minNights: 1,
   maxNights: 365,
   advanceBookingDays: 365,
+  preparationTimeHours: 0,
   basePrice: 5000,
   cleaningFee: 2500,
   weekendPrice: 6000,
@@ -227,6 +229,7 @@ export function CreateListingWizard() {
         minNights: data.minNights,
         maxNights: data.maxNights,
         advanceBookingDays: data.advanceBookingDays,
+        preparationTimeHours: data.preparationTimeHours,
         checkInTime: data.checkInTime,
         checkOutTime: data.checkOutTime,
         allowsPets: data.allowsPets,
@@ -541,14 +544,92 @@ export function CreateListingWizard() {
           )}
 
           {step === 7 && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-bold text-navy">Availability settings</h2>
+            <div className="space-y-6">
+              <h2 className="text-lg font-bold text-navy">Availability & booking settings</h2>
+
+              {/* A. Booking method */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Booking method</Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button
+                    onClick={() => update({ instantBook: false })}
+                    className={`rounded-lg border p-3 text-left transition ${!data.instantBook ? 'border-orange bg-peach-light' : 'border-border'}`}
+                  >
+                    <p className="text-sm font-medium text-navy">Approve booking requests</p>
+                    <p className="text-xs text-muted-foreground">Host approval is required before the reservation is confirmed.</p>
+                  </button>
+                  <button
+                    onClick={() => update({ instantBook: true })}
+                    className={`rounded-lg border p-3 text-left transition ${data.instantBook ? 'border-orange bg-peach-light' : 'border-border'}`}
+                  >
+                    <p className="text-sm font-medium text-navy flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-orange" /> Instant Book</p>
+                    <p className="text-xs text-muted-foreground">Eligible reservations are confirmed automatically.</p>
+                  </button>
+                </div>
+              </div>
+
+              {/* B. Minimum and maximum stay */}
               <div className="grid gap-4 sm:grid-cols-3">
                 <Counter label="Minimum nights per stay" value={data.minNights} min={1} max={30} onChange={(v) => update({ minNights: v })} />
                 <Counter label="Maximum nights per stay" value={data.maxNights} min={1} max={365} onChange={(v) => update({ maxNights: v })} />
                 <Counter label="Advance booking window (days)" value={data.advanceBookingDays} min={30} max={730} onChange={(v) => update({ advanceBookingDays: v })} />
               </div>
-              <div className="rounded-xl bg-peach-light/60 p-3 text-xs text-navy">
+
+              {/* C. Preparation time */}
+              <div>
+                <Label className="text-sm font-semibold">Gap between reservations</Label>
+                <select
+                  value={data.preparationTimeHours || 0}
+                  onChange={(e) => update({ preparationTimeHours: parseInt(e.target.value) })}
+                  className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm"
+                >
+                  <option value={0}>No preparation gap</option>
+                  <option value={24}>1 night between stays</option>
+                  <option value={48}>2 nights between stays</option>
+                </select>
+                <p className="mt-1 text-xs text-muted-foreground">Prevents back-to-back bookings to allow time for cleaning and turnover.</p>
+              </div>
+
+              {/* D. Check-in window */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label>Check-in from</Label>
+                  <Input
+                    type="time"
+                    value={data.checkInTime}
+                    onChange={(e) => update({ checkInTime: e.target.value })}
+                    className="mt-1 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <Label>Check-out by</Label>
+                  <Input
+                    type="time"
+                    value={data.checkOutTime}
+                    onChange={(e) => update({ checkOutTime: e.target.value })}
+                    className="mt-1 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              {/* E. Configuration summary */}
+              <div className="rounded-xl bg-peach-light/60 p-4 text-xs text-navy space-y-1">
+                <p className="font-semibold mb-2">Configuration summary</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  <span className="text-muted-foreground">Booking method:</span>
+                  <span className="font-medium">{data.instantBook ? 'Instant Book' : 'Host approval'}</span>
+                  <span className="text-muted-foreground">Stay duration:</span>
+                  <span className="font-medium">{data.minNights}–{data.maxNights} nights</span>
+                  <span className="text-muted-foreground">Booking window:</span>
+                  <span className="font-medium">{data.advanceBookingDays} days ahead</span>
+                  <span className="text-muted-foreground">Preparation gap:</span>
+                  <span className="font-medium">{data.preparationTimeHours === 0 ? 'No gap' : `${data.preparationTimeHours / 24} night(s)`}</span>
+                  <span className="text-muted-foreground">Check-in/out:</span>
+                  <span className="font-medium">{data.checkInTime} – {data.checkOutTime}</span>
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-peach-light/40 p-3 text-xs text-navy">
                 <Calendar className="mr-1 inline h-3 w-3" /> We've pre-generated 90 days of open availability. After publishing, you'll be able to block specific dates from the calendar in your host dashboard.
               </div>
             </div>
