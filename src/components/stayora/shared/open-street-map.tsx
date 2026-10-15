@@ -42,6 +42,10 @@ interface MapProps {
   /** When true, fetch new listings on bounds change */
   searchAsMove?: boolean
   onSearchAsMoveChange?: (enabled: boolean) => void
+  /** Called when user clicks on the map (for interactive pin placement) */
+  onMapClick?: (lat: number, lng: number) => void
+  /** Whether the map is clickable for pin placement (default false) */
+  clickable?: boolean
 }
 
 export function OpenStreetMap(props: MapProps) {

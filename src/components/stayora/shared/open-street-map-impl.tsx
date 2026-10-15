@@ -45,6 +45,10 @@ interface MapProps {
   /** When true, fetch new listings on bounds change */
   searchAsMove?: boolean
   onSearchAsMoveChange?: (enabled: boolean) => void
+  /** Called when user clicks on the map (for interactive pin placement) */
+  onMapClick?: (lat: number, lng: number) => void
+  /** Whether the map is clickable for pin placement (default false) */
+  clickable?: boolean
 }
 
 // Simple grid-based clustering (no extra dependency)
@@ -87,6 +91,8 @@ export function OpenStreetMapImpl({
   showSearchAsMoveToggle = false,
   searchAsMove = false,
   onSearchAsMoveChange,
+  onMapClick,
+  clickable = false,
 }: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
@@ -108,6 +114,13 @@ export function OpenStreetMapImpl({
     }).addTo(map)
     markerLayerRef.current = L.layerGroup().addTo(map)
     mapRef.current = map
+
+    // Click handler for interactive pin placement
+    if (clickable && onMapClick) {
+      map.on('click', (e: L.LeafletMouseEvent) => {
+        onMapClick(e.latlng.lat, e.latlng.lng)
+      })
+    }
 
     // Fire initial bounds
     if (onBoundsChange) {

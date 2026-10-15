@@ -6,6 +6,7 @@ import { createListing, fetchListing } from '@/lib/api'
 import { useAmenities, useWizardSteps, useDestinations, useCategories } from '@/hooks/use-content'
 import { resolveIcon } from '@/lib/icon-resolver'
 import { ImageUploader, UploadedImage } from '@/components/stayora/shared/image-uploader'
+import { OpenStreetMap } from '@/components/stayora/shared/open-street-map'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -114,6 +115,8 @@ export function CreateListingWizard() {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [editing, setEditing] = useState(false)
   const [loadingListing, setLoadingListing] = useState(false)
+  const [addressQuery, setAddressQuery] = useState('')
+  const [geocoding, setGeocoding] = useState(false)
 
   // Fetch content from DB
   const { amenities: allAmenities, loading: amenitiesLoading } = useAmenities()
@@ -327,6 +330,74 @@ export function CreateListingWizard() {
     }
   }
 
+  // Forward geocode: search address via Nominatim (OpenStreetMap free geocoding)
+  const searchAddress = async () => {
+    if (!addressQuery.trim()) { showToast('Enter an address', 'Type a street, city, or landmark to search.', 'error'); return }
+    setGeocoding(true)
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressQuery)}&format=json&addressdetails=1&limit=1`
+      const res = await fetch(url, { headers: { 'Accept-Language': 'en' } })
+      const results = await res.json()
+      if (!results || results.length === 0) {
+        showToast('No results', 'Try a different address or city name.', 'default')
+        return
+      }
+      const r = results[0]
+      const addr = r.address || {}
+      const lat = parseFloat(r.lat)
+      const lng = parseFloat(r.lon)
+      const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || ''
+      const neighborhood = addr.suburb || addr.neighbourhood || addr.quarter || ''
+      const country = addr.country || ''
+      const postalCode = addr.postcode || ''
+      const road = addr.road || addr.pedestrian || addr.footway || ''
+      const houseNumber = addr.house_number || ''
+      const streetAddress = houseNumber ? `${houseNumber} ${road}`.trim() : road
+
+      update({
+        lat, lng,
+        country, city, neighborhood,
+        postalCode,
+        address: streetAddress,
+      })
+      showToast('Location found', `${city}, ${country}`, 'success')
+    } catch (e: any) {
+      showToast('Search failed', e.message, 'error')
+    } finally {
+      setGeocoding(false)
+    }
+  }
+
+  // Reverse geocode: click on map → get address from Nominatim
+  const reverseGeocode = async (lat: number, lng: number) => {
+    setGeocoding(true)
+    try {
+      // Update lat/lng immediately
+      update({ lat, lng })
+      // Reverse geocode via Nominatim
+      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`
+      const res = await fetch(url, { headers: { 'Accept-Language': 'en' } })
+      const data_r = await res.json()
+      if (!data_r || !data_r.address) return
+      const addr = data_r.address
+      const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || ''
+      const neighborhood = addr.suburb || addr.neighbourhood || addr.quarter || ''
+      const country = addr.country || ''
+      const postalCode = addr.postcode || ''
+      const road = addr.road || addr.pedestrian || addr.footway || ''
+      const houseNumber = addr.house_number || ''
+      const streetAddress = houseNumber ? `${houseNumber} ${road}`.trim() : road
+
+      update({ country, city, neighborhood, postalCode, address: streetAddress })
+      showToast('Address auto-filled', `${streetAddress || city}, ${country}`, 'success')
+    } catch (e: any) {
+      // Silent fail — coordinates are already updated
+      showToast('Coordinates set', `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`, 'default')
+    } finally {
+      setGeocoding(false)
+    }
+  }
+
   // Set coords based on city/country lookup (uses DB-driven popular destinations)
   const lookupCoords = () => {
     const match = popularDestinations.find((d: any) =>
@@ -444,56 +515,119 @@ export function CreateListingWizard() {
           )}
 
           {step === 1 && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <h2 className="text-lg font-bold text-navy">Where is your place located?</h2>
+
+              {/* Address search */}
+              <div>
+                <Label className="text-sm font-semibold">Search your address</Label>
+                <p className="text-xs text-muted-foreground mb-2">Type your street address, city, or landmark. We'll auto-fill all fields from the map.</p>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={addressQuery}
+                      onChange={(e) => setAddressQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), searchAddress())}
+                      placeholder="e.g. Rua da Alfama 10, Lisbon, Portugal"
+                      className="rounded-lg pl-9"
+                    />
+                  </div>
+                  <Button type="button" onClick={searchAddress} disabled={geocoding} className="rounded-full bg-orange text-white shrink-0">
+                    {geocoding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    <span className="ml-1">Search</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Interactive map — click to place pin */}
+              <div>
+                <Label className="text-sm font-semibold">Click on the map to set exact location</Label>
+                <p className="text-xs text-muted-foreground mb-2">Click anywhere on the map. All address fields will auto-fill from OpenStreetMap geocoding.</p>
+                {data.lat !== null && data.lng !== null ? (
+                  <OpenStreetMap
+                    singleLocation={{
+                      lat: data.lat,
+                      lng: data.lng,
+                      label: `<div style="font-weight: 600; padding: 4px 8px;">${data.address || data.title || 'Property location'}</div>`,
+                    }}
+                    center={[data.lat, data.lng]}
+                    zoom={15}
+                    height={350}
+                    scrollWheelZoom
+                    clickable
+                    onMapClick={reverseGeocode}
+                  />
+                ) : (
+                  <OpenStreetMap
+                    center={[38.7223, -9.1393]}
+                    zoom={3}
+                    height={350}
+                    scrollWheelZoom
+                    clickable
+                    onMapClick={reverseGeocode}
+                  />
+                )}
+                {geocoding && (
+                  <div className="mt-2 flex items-center gap-2 text-xs text-orange">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Looking up address...
+                  </div>
+                )}
+              </div>
+
+              {/* Auto-filled address fields */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label>Country</Label>
-                  <Input value={data.country} onChange={(e) => update({ country: e.target.value })} className="mt-1 rounded-lg" />
+                  <Input value={data.country} onChange={(e) => update({ country: e.target.value })} placeholder="Auto-filled" className="mt-1 rounded-lg" />
                 </div>
                 <div>
                   <Label>City</Label>
-                  <Input value={data.city} onChange={(e) => update({ city: e.target.value })} className="mt-1 rounded-lg" />
+                  <Input value={data.city} onChange={(e) => update({ city: e.target.value })} placeholder="Auto-filled" className="mt-1 rounded-lg" />
                 </div>
                 <div>
                   <Label>Neighborhood</Label>
-                  <Input value={data.neighborhood} onChange={(e) => update({ neighborhood: e.target.value })} placeholder="e.g. Alfama" className="mt-1 rounded-lg" />
+                  <Input value={data.neighborhood} onChange={(e) => update({ neighborhood: e.target.value })} placeholder="Auto-filled" className="mt-1 rounded-lg" />
                 </div>
                 <div>
                   <Label>Postal code</Label>
-                  <Input value={data.postalCode} onChange={(e) => update({ postalCode: e.target.value })} className="mt-1 rounded-lg" />
+                  <Input value={data.postalCode} onChange={(e) => update({ postalCode: e.target.value })} placeholder="Auto-filled" className="mt-1 rounded-lg" />
                 </div>
                 <div className="sm:col-span-2">
-                  <Label>Street address (optional, kept private)</Label>
-                  <Input value={data.address} onChange={(e) => update({ address: e.target.value })} className="mt-1 rounded-lg" />
+                  <Label>Street address (private — only shared with guests after booking)</Label>
+                  <Input value={data.address} onChange={(e) => update({ address: e.target.value })} placeholder="Auto-filled from map" className="mt-1 rounded-lg" />
                 </div>
                 <div>
                   <Label>Latitude</Label>
-                  <Input type="number" step="0.0001" value={data.lat ?? ''} onChange={(e) => update({ lat: parseFloat(e.target.value) || null })} className="mt-1 rounded-lg" />
+                  <Input type="number" step="0.000001" value={data.lat ?? ''} onChange={(e) => update({ lat: parseFloat(e.target.value) || null })} placeholder="Auto-filled" className="mt-1 rounded-lg" />
                 </div>
                 <div>
                   <Label>Longitude</Label>
-                  <Input type="number" step="0.0001" value={data.lng ?? ''} onChange={(e) => update({ lng: parseFloat(e.target.value) || null })} className="mt-1 rounded-lg" />
+                  <Input type="number" step="0.000001" value={data.lng ?? ''} onChange={(e) => update({ lng: parseFloat(e.target.value) || null })} placeholder="Auto-filled" className="mt-1 rounded-lg" />
                 </div>
               </div>
+
+              {/* Quick lookup for popular destinations */}
               <div className="flex items-center gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={lookupCoords} className="rounded-full">
-                  <Search className="mr-1 h-4 w-4" /> Auto-fill coordinates
+                  <Search className="mr-1 h-4 w-4" /> Quick-fill from popular city
                 </Button>
                 <Button type="button" variant="ghost" size="sm" onClick={() => setShowLocationHelp(!showLocationHelp)} className="rounded-full">
-                  How to find my coordinates?
+                  How does this work?
                 </Button>
               </div>
               {showLocationHelp && (
-                <div className="rounded-xl bg-peach-light/60 p-3 text-xs text-navy">
-                  <p className="font-semibold mb-1">Tip: Get precise coordinates</p>
-                  <p>1. Open <a href="https://www.openstreetmap.org" target="_blank" rel="noreferrer" className="text-orange underline">OpenStreetMap</a> and search your address</p>
-                  <p>2. Right-click on the map → "Show address" → copy the latitude/longitude</p>
-                  <p>3. Paste them above. The map shown to guests will use these coordinates.</p>
+                <div className="rounded-xl bg-peach-light/60 p-3 text-xs text-navy space-y-1">
+                  <p className="font-semibold">How location auto-fill works:</p>
+                  <p>1. <strong>Search:</strong> Type your address above and click Search. We use OpenStreetMap's free Nominatim geocoding service.</p>
+                  <p>2. <strong>Click map:</strong> Click anywhere on the map to drop a pin. We'll reverse-geocode the coordinates to fill in all address fields.</p>
+                  <p>3. <strong>Quick-fill:</strong> If your city matches one of our popular destinations, we'll apply canonical coordinates instantly.</p>
+                  <p>4. <strong>Manual edit:</strong> All fields are editable — fix any details the geocoder got wrong.</p>
+                  <p>5. <strong>Privacy:</strong> The exact address is only shared with guests after a booking is confirmed. Before booking, guests see an approximate area on the map.</p>
                 </div>
               )}
               <div className="rounded-xl bg-peach-light/60 p-3 text-xs text-navy">
-                <MapPin className="mr-1 inline h-3 w-3" /> Exact location is only shared with guests after a booking is confirmed.
+                <MapPin className="mr-1 inline h-3 w-3" /> Exact location is only shared with guests after a booking is confirmed. Guests see an approximate area before booking.
               </div>
             </div>
           )}
